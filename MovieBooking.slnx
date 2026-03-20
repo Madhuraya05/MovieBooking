@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MovieBooking.Application/MovieBooking.Application.csproj" />
+  <Project Path="MovieBooking.Domain/MovieBooking.Domain.csproj" />
+  <Project Path="MovieBooking.Infrastructure/MovieBooking.Infrastructure.csproj" />
+  <Project Path="MovieBooking.Web/MovieBooking.Web.csproj" />
+</Solution>

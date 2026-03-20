@@ -1,0 +1,92 @@
+@* Views/Booking/Confirmation.cshtml *@
+@model MovieBooking.Web.Models.BookingSummaryViewModel
+@{
+    ViewData["Title"] = "Booking Confirmed!";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:680px;text-align:center;padding-top:2rem">
+
+    <div class="confirm-badge">✓</div>
+    <h1 style="font-size:1.75rem;font-weight:800;margin:.75rem 0 .3rem">Booking Confirmed!</h1>
+    <p style="color:var(--text-muted);margin-bottom:2rem">
+        Your seats are locked in. See you at the movies!
+    </p>
+
+    <div class="card" style="text-align:left;margin-bottom:1rem">
+        <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:1.25rem">
+            <img src="@(Model.PosterUrl ?? "/images/no-poster.jpg")"
+                 alt="@Model.MovieTitle"
+                 style="width:80px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" />
+            <div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--primary);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem">
+                    Booking Reference
+                </div>
+                <div style="font-size:1.3rem;font-weight:800;font-family:monospace;letter-spacing:.05em;color:var(--text);margin-bottom:.6rem">
+                    @Model.BookingReference
+                </div>
+                <h2 style="font-size:1rem;font-weight:700;margin-bottom:.4rem">@Model.MovieTitle</h2>
+                <div style="font-size:.825rem;color:var(--text-muted);display:flex;flex-direction:column;gap:.2rem">
+                    <span>📅 @Model.ShowDate.ToString("dddd, dd MMMM yyyy")</span>
+                    <span>🕐 @DateTime.Today.Add(Model.StartTime).ToString("hh:mm tt")</span>
+                    <span>📍 @Model.TheatreName, @Model.City</span>
+                    <span>🎭 @Model.ScreenName · @Model.Language</span>
+                </div>
+            </div>
+        </div>
+
+        @* Seats *@
+        <div style="border-top:1px solid var(--border);padding-top:1rem">
+            <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">
+                Your Seats
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+                @foreach (var seat in Model.Seats)
+                {
+                    var bg = seat.Category switch {
+                        "VIP"     => "#fff0f2",
+                        "Premium" => "#eef2ff",
+                        _         => "#f0fdf4"
+                    };
+                    var clr = seat.Category switch {
+                        "VIP"     => "#c0253a",
+                        "Premium" => "#4338ca",
+                        _         => "#065f46"
+                    };
+                    <div style="background:@bg;color:@clr;border:1.5px solid currentColor;border-radius:6px;padding:.3rem .65rem;font-size:.82rem;font-weight:700">
+                        @seat.SeatLabel
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Total *@
+        <div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:.875rem;color:var(--text-muted)">Amount Paid</span>
+            <span style="font-size:1.1rem;font-weight:800;color:var(--primary)">₹@Model.TotalAmount.ToString("F0")</span>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+        <a asp-action="MyBookings" asp-controller="Booking" class="btn-primary">
+            📋 My Bookings
+        </a>
+        <a asp-action="Index" asp-controller="Movie" class="btn-secondary">
+            🎬 Browse More Movies
+        </a>
+    </div>
+</div>
+
+<style>
+.confirm-badge {
+    width: 64px; height: 64px; background: #dcfce7; color: #15803d;
+    border-radius: 50%; font-size: 2rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto;
+}
+</style>
+
+
+@* =============================================================================
+   Views/Booking/MyBookings.cshtml
+============================================================================= *@

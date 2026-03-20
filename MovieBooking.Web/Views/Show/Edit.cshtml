@@ -1,0 +1,80 @@
+@* =============================================================================
+   Views/Show/Edit.cshtml
+============================================================================= *@
+@model MovieBooking.Web.Models.ShowViewModel
+@{
+    ViewData["Title"] = "Edit Show";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="form-page-header">
+        <a asp-action="Manage" asp-controller="Show" class="back-link">← Back to Shows</a>
+        <h1 class="page-title">✏ Edit Show</h1>
+    </div>
+
+    <div class="form-card">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        @if (TempData["Warning"] != null)
+        { <div class="alert alert-info">@TempData["Warning"]</div> }
+
+        <form asp-action="Edit" asp-controller="Show" asp-route-id="@Model.ShowId" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ShowId" />
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label asp-for="MovieId" class="form-label"></label>
+                    <select asp-for="MovieId" asp-items="Model.Movies" class="form-control"
+                            onchange="onMovieChange(this)">
+                        <option value="">— Select movie —</option>
+                    </select>
+                    <span asp-validation-for="MovieId" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="ScreenId" class="form-label"></label>
+                    <select asp-for="ScreenId" asp-items="Model.Screens" class="form-control">
+                        <option value="">— Select screen —</option>
+                    </select>
+                    <span asp-validation-for="ScreenId" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="ShowDate" class="form-label"></label>
+                    <input asp-for="ShowDate" type="date" class="form-control" />
+                    <span asp-validation-for="ShowDate" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="StartTime" class="form-label"></label>
+                    <input asp-for="StartTime" type="time" class="form-control" />
+                    <span asp-validation-for="StartTime" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Language" class="form-label"></label>
+                    <select asp-for="Language" class="form-control">
+                        <option>English</option><option>Hindi</option><option>Tamil</option>
+                        <option>Telugu</option><option>Malayalam</option>
+                        <option>Kannada</option><option>Punjabi</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="PriceMultiplier" class="form-label"></label>
+                    <input asp-for="PriceMultiplier" type="number" step="0.1" min="0.5" max="2.0"
+                           class="form-control" />
+                    <span asp-validation-for="PriceMultiplier" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a asp-action="Manage" asp-controller="Show" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

@@ -1,0 +1,77 @@
+@* =============================================================================
+   Views/Theatre/Manage.cshtml — Admin: All Theatres Table
+============================================================================= *@
+@model IEnumerable<MovieBooking.Models.Theatre>
+@{
+    ViewData["Title"] = "Manage Theatres";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">🏢 Theatres</h1>
+            <p style="color:var(--text-muted);margin-top:.2rem">@Model.Count() theatres total</p>
+        </div>
+        <a asp-action="Create" asp-controller="Theatre" class="btn-primary">+ Add Theatre</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✓ @TempData["Success"]</div>
+    }
+
+    <div class="card" style="overflow:auto">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Theatre</th>
+                    <th>City</th>
+                    <th>Screens</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var theatre in Model)
+                {
+                    <tr class="@(!theatre.IsActive ? "row-inactive" : "")">
+                        <td>
+                            <div style="font-weight:600">@theatre.Name</div>
+                            <div style="font-size:.78rem;color:var(--text-muted)">@theatre.Address</div>
+                        </td>
+                        <td>@theatre.City</td>
+                        <td>
+                            <span style="font-weight:600">@theatre.Screens.Count(s => s.IsActive)</span>
+                            <span style="color:var(--text-muted);font-size:.8rem"> screens</span>
+                        </td>
+                        <td style="color:var(--text-muted)">@(theatre.PhoneNumber ?? "—")</td>
+                        <td>
+                            <span class="status-badge @(theatre.IsActive ? "status-active" : "status-inactive")">
+                                @(theatre.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <a asp-action="Screens" asp-controller="Theatre"
+                                   asp-route-id="@theatre.TheatreId" class="btn-sm-view">Screens</a>
+                                <a asp-action="Edit" asp-controller="Theatre"
+                                   asp-route-id="@theatre.TheatreId" class="btn-sm-edit">Edit</a>
+                                @if (theatre.IsActive && User.IsInRole("SuperAdmin"))
+                                {
+                                    <form asp-action="DeleteTheatre" asp-controller="Theatre" method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@theatre.TheatreId" />
+                                        <button type="submit" class="btn-sm-delete"
+                                                onclick="return confirm('Deactivate @theatre.Name?')">Remove</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

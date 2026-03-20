@@ -1,0 +1,234 @@
+@* =============================================================================
+   Views/Payment/Checkout.cshtml — Stripe Elements Payment Form
+   =============================================================================
+   HOW STRIPE ELEMENTS WORKS HERE:
+     1. Page loads → JS calls POST /Payment/CreateIntent to get client_secret
+     2. Stripe.js uses client_secret to render the payment form (card, UPI, etc.)
+     3. User fills card details (stored on Stripe, never on our server)
+     4. User clicks Pay → stripe.confirmPayment() sends card to Stripe
+     5. Stripe redirects to /Payment/Return?bookingId=...
+     6. Stripe's webhook fires → booking confirmed in background
+============================================================================= *@
+
+@using MovieBooking.Models
+@{
+    ViewData["Title"] = "Checkout";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var booking = ViewBag.Booking as Booking;
+}
+
+<div class="container" style="max-width:760px">
+    @Html.AntiForgeryToken()
+    <div style="margin:1.5rem 0 1rem">
+        <h1 class="page-title" style="font-size:1.4rem">💳 Secure Checkout</h1>
+    </div>
+
+    @* Expiry warning *@
+    <div class="timer-bar" id="timerBar" style="margin-bottom:1.25rem">
+        <div style="font-size:1.2rem">⏱</div>
+        <div style="flex:1">
+            <div style="font-weight:600;font-size:.875rem">Complete payment before</div>
+            <div style="font-size:.75rem;opacity:.75">Seats will be released if payment is not completed</div>
+        </div>
+        <div id="countdown" class="timer-count">--:--</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:1.25rem;align-items:flex-start">
+
+        @* ── PAYMENT FORM ── *@
+        <div class="card">
+            <h3 style="font-size:.9rem;font-weight:700;margin-bottom:1.25rem;color:var(--text)">
+                Payment Details
+            </h3>
+
+            @* Stripe mounts its payment form into this div *@
+            <div id="payment-element" style="margin-bottom:1.25rem">
+                <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.875rem">
+                    Loading payment form...
+                </div>
+            </div>
+
+            @* Error message from Stripe *@
+            <div id="payment-message" class="alert alert-danger"
+                 style="display:none;margin-bottom:1rem"></div>
+
+            <button id="payBtn" class="btn-primary" style="width:100%;padding:.8rem;font-size:.95rem">
+                <span id="payBtnText">
+                    Pay ₹@booking?.TotalAmount.ToString("F0")
+                </span>
+                <span id="payBtnSpinner" style="display:none">Processing...</span>
+            </button>
+
+            <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.75rem">
+                <span style="font-size:.72rem;color:var(--text-muted)">🔒 Secured by Stripe</span>
+                <span style="font-size:.72rem;color:var(--text-muted)">·</span>
+                <span style="font-size:.72rem;color:var(--text-muted)">256-bit SSL</span>
+            </div>
+
+            @* Test card hint (remove in production) *@
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:.75rem;margin-top:1rem;font-size:.75rem;color:#15803d">
+                <strong>Test mode:</strong> Use card <code style="font-family:monospace">4242 4242 4242 4242</code>,
+                any future date, any 3-digit CVC, any ZIP.
+            </div>
+        </div>
+
+        @* ── ORDER SUMMARY ── *@
+        <div>
+            <div class="card">
+                <h3 style="font-size:.875rem;font-weight:700;margin-bottom:.75rem">Order Summary</h3>
+
+                @if (booking != null)
+                {
+                    <div style="font-size:.875rem;font-weight:600;color:var(--text);margin-bottom:.3rem">
+                        @booking.Show.Movie.Title
+                    </div>
+                    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:1rem">
+                        @booking.Show.ShowDate.ToString("dd MMM") ·
+                        @booking.Show.StartTime.ToString(@"hh\:mm") ·
+                        @booking.Show.Screen.Theatre.Name
+                    </div>
+
+                    @* Seats *@
+                    <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1rem">
+                        @foreach (var bs in booking.BookingSeats)
+                        {
+                            <span style="background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.75rem;font-weight:600">
+                                @bs.Seat.RowLabel@bs.Seat.SeatNumber
+                            </span>
+                        }
+                    </div>
+
+                    <div style="border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);margin-bottom:.3rem">
+                            <span>Subtotal</span>
+                            <span>₹@((booking.TotalAmount - booking.ConvenienceFee).ToString("F0"))</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem">
+                            <span>Convenience fee</span>
+                            <span>₹@booking.ConvenienceFee.ToString("F0")</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700;color:var(--text)">
+                            <span>Total</span>
+                            <span style="color:var(--primary)">₹@booking.TotalAmount.ToString("F0")</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:.75rem;font-size:.7rem;color:var(--text-muted);font-family:monospace;text-align:center">
+                        Ref: @booking.BookingReference
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+@* Load Stripe.js from Stripe's CDN — must come from js.stripe.com *@
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const bookingId   = @booking?.BookingId;
+const returnUrl   = `${window.location.origin}/Payment/Return?bookingId=${bookingId}`;
+const expiresAt   = new Date('@booking?.ExpiresAt.ToString("o")');
+
+// ── COUNTDOWN TIMER ──────────────────────────────────────────────────────────
+const countdownEl = document.getElementById('countdown');
+function updateTimer() {
+    const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    countdownEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+    countdownEl.className = 'timer-count' + (remaining <= 60 ? ' urgent' : remaining <= 120 ? ' warning' : '');
+    if (remaining === 0) window.location.href = `/Booking/SelectSeats?showId=@booking?.ShowId`;
+}
+updateTimer();
+setInterval(updateTimer, 1000);
+
+// ── STRIPE SETUP ─────────────────────────────────────────────────────────────
+let stripe, elements;
+
+async function initStripe() {
+    // Step 1: Create PaymentIntent on server, get client_secret
+    const resp = await fetch('/Payment/CreateIntent', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? ''
+        },
+        body: `bookingId=${bookingId}`
+    });
+
+    const data = await resp.json();
+    if (data.error) {
+        showError(data.error);
+        return;
+    }
+
+    // Step 2: Initialise Stripe with publishable key
+    stripe = Stripe(data.publishableKey);
+
+    // Step 3: Create Elements instance (renders payment UI)
+    elements = stripe.elements({
+        clientSecret: data.clientSecret,
+        appearance: {
+            theme: 'stripe',
+            variables: {
+                colorPrimary:       '#e8344a',
+                colorBackground:    '#ffffff',
+                colorText:          '#1a1a2e',
+                colorDanger:        '#ef4444',
+                fontFamily:         'Inter, system-ui, sans-serif',
+                borderRadius:       '6px',
+                spacingUnit:        '4px'
+            }
+        }
+    });
+
+    // Step 4: Mount the PaymentElement (renders card form, UPI, etc.)
+    const paymentElement = elements.create('payment');
+    paymentElement.mount('#payment-element');
+}
+
+// ── HANDLE PAY BUTTON ────────────────────────────────────────────────────────
+document.getElementById('payBtn').addEventListener('click', async () => {
+    if (!stripe || !elements) return;
+
+    setLoading(true);
+
+    // Step 5: Confirm payment — sends card details to Stripe (never to our server)
+    const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+            return_url: returnUrl,   // Stripe redirects here after payment
+        }
+    });
+
+    // If we reach here, payment failed (successful payment redirects away)
+    if (error) {
+        showError(error.message);
+        setLoading(false);
+    }
+});
+
+function showError(msg) {
+    const el = document.getElementById('payment-message');
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 6000);
+}
+
+function setLoading(loading) {
+    document.getElementById('payBtn').disabled = loading;
+    document.getElementById('payBtnText').style.display   = loading ? 'none'  : 'inline';
+    document.getElementById('payBtnSpinner').style.display = loading ? 'inline' : 'none';
+}
+
+// Add CSRF token hidden input for CreateIntent fetch
+const csrfInput = document.createElement('input');
+csrfInput.type = 'hidden';
+csrfInput.name = '__RequestVerificationToken';
+document.body.appendChild(csrfInput);
+
+// Initialise
+initStripe();
+</script>
+}

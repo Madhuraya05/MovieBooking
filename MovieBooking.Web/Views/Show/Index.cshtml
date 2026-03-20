@@ -1,0 +1,172 @@
+@* =============================================================================
+   Views/Show/Index.cshtml — Public: Browse All Upcoming Shows
+============================================================================= *@
+@model IEnumerable<MovieBooking.Web.Models.ShowListViewModel>
+@{
+    ViewData["Title"] = "Shows";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">🎟 Upcoming Shows</h1>
+    </div>
+
+    @* Filters *@
+    <form method="get" class="filter-bar">
+        <select name="movieId" class="form-control filter-select">
+            <option value="">All Movies</option>
+            @foreach (var m in ViewBag.Movies as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new())
+            {
+                <option value="@m.Value"
+                        selected="@(ViewBag.SelectedMovieId?.ToString() == m.Value)">
+                    @m.Text
+                </option>
+            }
+        </select>
+
+        <select name="city" class="form-control filter-select">
+            <option value="">All Cities</option>
+            @foreach (var c in ViewBag.Cities as List<string> ?? new())
+            {
+                <option value="@c" selected="@(ViewBag.SelectedCity == c)">@c</option>
+            }
+        </select>
+
+        <input type="date" name="date" class="form-control"
+               value="@((ViewBag.SelectedDate as DateTime?)?.ToString("yyyy-MM-dd"))"
+               style="max-width:180px" />
+
+        <button type="submit" class="btn-primary">Search</button>
+        <a asp-action="Index" asp-controller="Show" class="btn-secondary">Clear</a>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div>🎭</div>
+            <p>No shows found for this selection.</p>
+        </div>
+    }
+    else
+    {
+        @* Group by date *@
+        var grouped = Model.GroupBy(s => s.ShowDate.Date).OrderBy(g => g.Key);
+
+        @foreach (var dateGroup in grouped)
+        {
+            <div style="margin-bottom:2rem">
+                <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:2px solid var(--border)">
+                    @dateGroup.Key.ToString("dddd, dd MMMM yyyy")
+                    @if (dateGroup.Key == DateTime.Today)
+                    { <span style="background:var(--primary);color:#fff;font-size:.65rem;padding:.15rem .5rem;border-radius:999px;margin-left:.5rem">Today</span> }
+                    @if (dateGroup.Key == DateTime.Today.AddDays(1))
+                    { <span style="background:#6366f1;color:#fff;font-size:.65rem;padding:.15rem .5rem;border-radius:999px;margin-left:.5rem">Tomorrow</span> }
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:.75rem">
+                    @foreach (var show in dateGroup.OrderBy(s => s.StartTime))
+                    {
+                        var availPct = show.TotalSeats > 0
+                            ? (double)show.AvailableSeats / show.TotalSeats * 100
+                            : 0;
+                        var seatColor = availPct > 50 ? "#10b981"
+                                      : availPct > 20 ? "#f59e0b" : "#ef4444";
+
+                        <div class="show-list-card">
+                            @* Poster *@
+                            <img src="@(show.PosterUrl ?? "/images/no-poster.jpg")"
+                                 alt="@show.MovieTitle" class="show-list-poster" />
+
+                            @* Info *@
+                            <div class="show-list-info">
+                                <div style="font-size:1rem;font-weight:700;color:var(--text)">
+                                    @show.MovieTitle
+                                </div>
+                                <div style="font-size:.825rem;color:var(--text-muted);margin-top:.2rem">
+                                    📍 @show.TheatreName · @show.City
+                                    <span class="badge-sm" style="margin-left:.3rem">@show.ScreenType</span>
+                                </div>
+                                <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem">
+                                    🌐 @show.Language
+                                </div>
+                            </div>
+
+                            @* Time *@
+                            <div class="show-list-time">
+                                <div style="font-size:1.15rem;font-weight:800;color:var(--primary)">
+                                    @show.StartTime.ToString(@"hh\:mm")
+                                </div>
+                                <div style="font-size:.72rem;color:var(--text-muted)">
+                                    → @show.EndTime.ToString(@"hh\:mm")
+                                </div>
+                            </div>
+
+                            @* Seats + Price *@
+                            <div class="show-list-seats">
+                                <div style="font-size:.825rem;font-weight:600;color:@seatColor">
+                                    @show.AvailableSeats seats left
+                                </div>
+                                <div style="font-size:.75rem;color:var(--text-muted)">
+                                    from ₹@show.MinPrice
+                                </div>
+                            </div>
+
+                            @* Book button *@
+                            <div class="show-list-action">
+                                @if (show.AvailableSeats > 0)
+                                {
+                                    <a asp-action="SelectSeats" asp-controller="Booking"
+                                       asp-route-showId="@show.ShowId"
+                                       class="btn-primary">
+                                        Book Now
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button class="btn-secondary" disabled style="opacity:.5;cursor:not-allowed">
+                                        Houseful
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@* <style>
+.show-list-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .2s, transform .15s;
+}
+.show-list-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+.show-list-poster {
+    width: 52px;
+    height: 78px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.show-list-info  { flex: 1; min-width: 0; }
+.show-list-time  { min-width: 80px; text-align: center; flex-shrink: 0; }
+.show-list-seats { min-width: 110px; text-align: center; flex-shrink: 0; }
+.show-list-action { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+    .show-list-card { flex-wrap: wrap; }
+    .show-list-time, .show-list-seats { min-width: 80px; }
+}
+</style> *@

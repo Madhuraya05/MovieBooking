@@ -1,0 +1,121 @@
+@* =============================================================================
+   Views/Show/Manage.cshtml — Admin: All Shows Table
+============================================================================= *@
+@model IEnumerable<MovieBooking.Models.Show>
+@{
+    ViewData["Title"] = "Manage Shows";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">🎬 Shows</h1>
+            <p style="color:var(--text-muted);margin-top:.2rem">@Model.Count() shows found</p>
+        </div>
+        <a asp-action="Schedule" asp-controller="Show" class="btn-primary">+ Schedule Show</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    { <div class="alert alert-success">✓ @TempData["Success"]</div> }
+
+    @* Filters *@
+    <form method="get" class="filter-bar" style="margin-bottom:1.5rem">
+        <select name="status" class="form-control filter-select" style="min-width:140px">
+            <option value="">All Statuses</option>
+            <option value="Scheduled" selected="@(ViewBag.StatusFilter == "Scheduled")">Scheduled</option>
+            <option value="Cancelled" selected="@(ViewBag.StatusFilter == "Cancelled")">Cancelled</option>
+            <option value="Completed" selected="@(ViewBag.StatusFilter == "Completed")">Completed</option>
+        </select>
+        <input type="date" name="date" class="form-control" value="@ViewBag.DateFilter"
+               style="max-width:180px" />
+        <button type="submit" class="btn-primary">Filter</button>
+        <a asp-action="Manage" asp-controller="Show" class="btn-secondary">Clear</a>
+    </form>
+
+    <div class="card" style="overflow:auto">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Movie</th>
+                    <th>Theatre / Screen</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Language</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var show in Model)
+                {
+                    var statusColor = show.Status switch {
+                        "Scheduled" => "status-active",
+                        "Cancelled" => "status-inactive",
+                        "Completed" => "status-inactive",
+                        _ => ""
+                    };
+                    <tr>
+                        <td>
+                            <div style="font-weight:600">@show.Movie.Title</div>
+                            <div style="font-size:.75rem;color:var(--text-muted)">@show.Movie.Genre</div>
+                        </td>
+                        <td>
+                            <div style="font-weight:500">@show.Screen.Theatre.Name</div>
+                            <div style="font-size:.75rem;color:var(--text-muted)">
+                                @show.Screen.ScreenName
+                                <span class="badge-sm">@show.Screen.ScreenType</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight:500">@show.ShowDate.ToString("dd MMM yyyy")</div>
+                            <div style="font-size:.75rem;color:var(--text-muted)">@show.ShowDate.ToString("dddd")</div>
+                        </td>
+                        <td>
+                            <div style="font-weight:600;color:var(--primary)">
+                                @show.StartTime.ToString(@"hh\:mm")
+                            </div>
+                            <div style="font-size:.75rem;color:var(--text-muted)">
+                                → @show.EndTime.ToString(@"hh\:mm")
+                            </div>
+                        </td>
+                        <td>@show.Language</td>
+                        <td>
+                            @if (show.PriceMultiplier != 1.0m)
+                            {
+                                <span style="font-weight:600;color:@(show.PriceMultiplier > 1 ? "#e8344a" : "#10b981")">
+                                    @show.PriceMultiplier×
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--text-muted)">1.0×</span>
+                            }
+                        </td>
+                        <td><span class="status-badge @statusColor">@show.Status</span></td>
+                        <td>
+                            <div class="table-actions">
+                                @if (show.Status == "Scheduled")
+                                {
+                                    <a asp-action="Edit" asp-controller="Show"
+                                       asp-route-id="@show.ShowId" class="btn-sm-edit">Edit</a>
+                                    <form asp-action="Cancel" asp-controller="Show" method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@show.ShowId" />
+                                        <button type="submit" class="btn-sm-delete"
+                                                onclick="return confirm('Cancel this show?')">Cancel</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-muted);font-size:.78rem">—</span>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

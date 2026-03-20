@@ -1,0 +1,32 @@
+﻿@* Views/TheatreAdmin/Dashboard.cshtml — UPDATED *@
+@{
+    ViewData["Title"] = "Theatre Admin Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">🏢 Theatre Admin</h1>
+            <p style="color:var(--text-muted);margin-top:.2rem">Welcome, @User.Identity!.Name</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✓ @TempData["Success"]</div>
+    }
+
+    <div class="card" style="margin-bottom:1rem">
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem">Quick Actions</h2>
+        <div class="quick-actions">
+            <a asp-action="Manage" asp-controller="Theatre" class="btn-primary">🏢 My Theatre</a>
+            <a asp-action="Create" asp-controller="Theatre" class="btn-secondary">+ New Theatre</a>
+            <a asp-action="Manage" asp-controller="Movie" class="btn-secondary">🎬 Movies</a>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <strong>Getting started:</strong> Create your theatre → Add screens → Add seat layout → Schedule shows.
+    </div>
+</div>

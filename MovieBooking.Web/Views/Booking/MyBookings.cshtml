@@ -1,0 +1,92 @@
+@* Views/Booking/MyBookings.cshtml *@
+@model IEnumerable<MovieBooking.Web.Models.BookingHistoryItem>
+@{
+    ViewData["Title"] = "My Bookings";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:860px">
+    <div class="page-header">
+        <h1 class="page-title">📋 My Bookings</h1>
+    </div>
+
+    @if (TempData["Success"] != null)
+    { <div class="alert alert-success">✓ @TempData["Success"]</div> }
+    @if (TempData["Error"] != null)
+    { <div class="alert alert-danger">@TempData["Error"]</div> }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div>🎟</div>
+            <p style="font-size:1rem;font-weight:600;margin-bottom:.5rem">No bookings yet</p>
+            <p style="margin-bottom:1.5rem;color:var(--text-muted)">Book your first movie ticket to get started.</p>
+            <a asp-action="Index" asp-controller="Movie" class="btn-primary">Browse Movies</a>
+        </div>
+    }
+    else
+    {
+        <div style="display:flex;flex-direction:column;gap:.75rem">
+            @foreach (var b in Model)
+            {
+                var statusColor = b.Status switch {
+                    "Confirmed" => "#15803d",
+                    "Pending"   => "#92400e",
+                    _           => "#6b7280"
+                };
+                var statusBg = b.Status switch {
+                    "Confirmed" => "#f0fdf4",
+                    "Pending"   => "#fef3c7",
+                    _           => "#f3f4f6"
+                };
+                var isPast = b.ShowDate < DateTime.Today;
+
+                <div class="card" style="@(isPast ? "opacity:.65" : "")">
+                    <div style="display:flex;gap:1rem;align-items:center">
+                        <img src="@(b.PosterUrl ?? "/images/no-poster.jpg")"
+                             alt="@b.MovieTitle"
+                             style="width:48px;height:72px;object-fit:cover;border-radius:6px;flex-shrink:0" />
+
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.2rem">
+                                @b.MovieTitle
+                            </div>
+                            <div style="font-size:.78rem;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:.5rem">
+                                <span>📅 @b.ShowDate.ToString("dd MMM yyyy")</span>
+                                <span>🕐 @DateTime.Today.Add(b.StartTime).ToString("hh:mm tt")</span>
+                                <span>📍 @b.TheatreName, @b.City</span>
+                                <span>🎟 @b.SeatCount seat@(b.SeatCount > 1 ? "s" : "")</span>
+                            </div>
+                        </div>
+
+                        <div style="text-align:right;flex-shrink:0">
+                            <div style="font-size:.875rem;font-weight:800;color:var(--primary);margin-bottom:.3rem">
+                                ₹@b.TotalAmount.ToString("F0")
+                            </div>
+                            <span style="background:@statusBg;color:@statusColor;font-size:.68rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;letter-spacing:.03em">
+                                @b.Status.ToUpper()
+                            </span>
+                        </div>
+
+                        @if (b.Status == "Pending")
+                        {
+                            <div>
+                                <form asp-action="Cancel" asp-controller="Booking" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                    <button type="submit" class="btn-sm-delete"
+                                            onclick="return confirm('Cancel this booking?')">Cancel</button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+
+                    <div style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-muted);display:flex;justify-content:space-between">
+                        <span>Ref: <strong style="font-family:monospace;color:var(--text)">@b.BookingReference</strong></span>
+                        <span>Booked @b.BookedAt.ToString("dd MMM yyyy, hh:mm tt")</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

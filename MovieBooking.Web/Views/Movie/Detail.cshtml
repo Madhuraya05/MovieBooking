@@ -1,0 +1,150 @@
+@* =============================================================================
+   Views/Movie/Detail.cshtml — Single Movie Detail Page
+============================================================================= *@
+
+@model MovieBooking.Models.Movie
+@using MovieBooking.Infrastructure.Services
+@{
+    ViewData["Title"] = Model.Title;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var cloudinary = ViewBag.Cloudinary as CloudinaryService;
+}
+
+<div class="container">
+    <a asp-action="Index" asp-controller="Movie" class="back-link">← Back to Movies</a>
+
+    <div class="detail-layout">
+
+        @* ── POSTER COLUMN ── *@
+        <div class="detail-poster-col">
+            @if (!string.IsNullOrEmpty(Model.TrailerUrl))
+            {
+                <div class="trailer-box">
+                    <iframe width="100%" height="250"
+                            src="@GetEmbedUrl(Model.TrailerUrl)"
+                            title="Trailer"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                    </iframe>
+                </div>
+            }
+
+
+            <img src="@(cloudinary?.GetResizedUrl(Model.PosterUrl, 400, 600) ?? Model.PosterUrl ?? "/images/no-poster.jpg")"
+                 alt="@Model.Title poster"
+                 class="detail-poster" />
+
+           @*  @if (!string.IsNullOrEmpty(Model.TrailerUrl))
+            {
+                <a href="@Model.TrailerUrl" target="_blank" rel="noopener" class="btn-trailer">
+                    ▶ Watch Trailer
+                </a>
+            } *@
+        </div>
+
+        @* ── INFO COLUMN ── *@
+        <div class="detail-info-col">
+            <div class="detail-badges">
+                @if (Model.Rating != null)
+                {
+                    <span class="badge-rating">@Model.Rating</span>
+                }
+                @if (Model.Genre != null)
+                {
+                    <span class="badge-genre">@Model.Genre</span>
+                }
+            </div>
+
+            <h1 class="detail-title">@Model.Title</h1>
+
+            <div class="detail-meta-row">
+                <span>🌐 @Model.Language</span>
+                <span>⏱ @Model.DurationMinutes min</span>
+                <span>📅 @Model.ReleaseDate.ToString("dd MMM yyyy")</span>
+            </div>
+
+            <p class="detail-description">@Model.Description</p>
+
+            @* ── SHOWS SECTION ── *@
+            <div class="shows-section">
+                <h2 class="shows-title">🎟 Available Shows</h2>
+
+                @if (!Model.Shows.Any())
+                {
+                    <p class="no-shows">No shows scheduled yet for this movie.</p>
+                }
+                else
+                {
+                    @* Group shows by date *@
+                    var showsByDate = Model.Shows
+                        .OrderBy(s => s.ShowDate)
+                        .ThenBy(s => s.StartTime)
+                        .GroupBy(s => s.ShowDate.Date);
+
+                    @foreach (var dateGroup in showsByDate)
+                    {
+                        <div class="show-date-group">
+                            <div class="show-date-label">@dateGroup.Key.ToString("dddd, dd MMM yyyy")</div>
+                            <div class="show-times">
+                                @foreach (var show in dateGroup)
+                                {
+                                    <a asp-action="SelectSeats" asp-controller="Booking"
+                                       asp-route-showId="@show.ShowId"
+                                       class="show-time-btn @(User.Identity!.IsAuthenticated ? "" : "requires-login")"
+                                       title="@show.Screen.Theatre.Name — @show.Screen.ScreenName">
+
+                                        @show.StartTime.ToString(@"hh\:mm")
+                                        <span class="show-screen">@show.Screen.ScreenType</span>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (!User.Identity!.IsAuthenticated)
+                    {
+                        <p class="login-prompt">
+                            <a asp-action="Login" asp-controller="Account"
+                               asp-route-returnUrl="@Context.Request.Path">Sign in</a> to book tickets
+                        </p>
+                    }
+                }
+            </div>
+
+            @if (User.IsInRole("SuperAdmin") || User.IsInRole("TheatreAdmin"))
+            {
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                    <a asp-action="Edit" asp-controller="Movie" asp-route-id="@Model.MovieId" class="btn-secondary">
+                        ✏ Edit Movie
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+@functions {
+    public string GetEmbedUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return "";
+
+        if (url.Contains("youtube.com"))
+        {
+            var uri = new Uri(url);
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+            
+            if (query.ContainsKey("v"))
+            {
+                return $"https://www.youtube.com/embed/{query["v"]}";
+            }
+        }
+
+        if (url.Contains("youtu.be/"))
+        {
+            var videoId = url.Split("youtu.be/")[1];
+            return $"https://www.youtube.com/embed/{videoId}";
+        }
+
+        return url;
+    }
+}

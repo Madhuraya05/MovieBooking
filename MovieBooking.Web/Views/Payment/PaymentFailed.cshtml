@@ -1,0 +1,23 @@
+@* Views/Payment/PaymentFailed.cshtml *@
+@{
+    ViewData["Title"] = "Payment Failed";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:500px;text-align:center;padding-top:3rem">
+    <div style="width:64px;height:64px;background:#fee2e2;color:#b91c1c;border-radius:50%;font-size:2rem;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">✕</div>
+    <h1 style="font-size:1.5rem;font-weight:800;color:#b91c1c;margin-bottom:.5rem">Payment Failed</h1>
+    <p style="color:var(--text-muted);margin-bottom:2rem">
+        Your card was declined or the payment could not be processed.
+        Your seats are still held — you can try again.
+    </p>
+    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+        <a asp-action="Checkout" asp-controller="Payment"
+           asp-route-bookingId="@ViewBag.BookingId" class="btn-primary">
+            Try Again
+        </a>
+        <a asp-action="MyBookings" asp-controller="Booking" class="btn-secondary">
+            My Bookings
+        </a>
+    </div>
+</div>

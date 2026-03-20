@@ -1,0 +1,82 @@
+﻿@*Views/SuperAdmin/Users.cshtml*@
+@model IEnumerable<MovieBooking.Models.AppUser>
+@{
+    ViewData["Title"] = "Manage Users";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var userRoles = ViewBag.UserRoles as Dictionary<string, IList<string>>;
+}
+
+<div class="container" style="padding-top:2rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+        <h1 style="font-size:1.6rem; font-weight:700;">👥 All Users</h1>
+        <a asp-action="Dashboard" asp-controller="SuperAdmin"
+           style="color:#718096; text-decoration:none; font-size:0.9rem;">← Back to Dashboard</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="card" style="overflow:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+            <thead>
+                <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+                    <th style="padding:0.75rem; color:#718096; font-weight:600;">Name</th>
+                    <th style="padding:0.75rem; color:#718096; font-weight:600;">Email</th>
+                    <th style="padding:0.75rem; color:#718096; font-weight:600;">Role</th>
+                    <th style="padding:0.75rem; color:#718096; font-weight:600;">Joined</th>
+                    <th style="padding:0.75rem; color:#718096; font-weight:600;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    var roles = userRoles != null && userRoles.ContainsKey(user.Id)
+                    ? userRoles[user.Id]
+                    : new List<string>();
+                    var primaryRole = roles.FirstOrDefault() ?? "User";
+
+                    <tr style="border-bottom:1px solid #f7fafc;">
+                        <td style="padding:0.75rem; font-weight:500;">@user.FullName</td>
+                        <td style="padding:0.75rem; color:#718096;">@user.Email</td>
+                        <td style="padding:0.75rem;">
+                            @{
+                                var badgeClass = primaryRole switch
+                                {
+                                                "SuperAdmin" => "badge-superadmin",
+                                                "TheatreAdmin" => "badge-theatreadmin",
+                                    _ => "badge-user"
+                                };
+                            }
+                            <span class="badge-role @badgeClass">@primaryRole</span>
+                        </td>
+                        <td style="padding:0.75rem; color:#718096;">@user.CreatedAt.ToString("dd MMM yyyy")</td>
+                        <td style="padding:0.75rem;">
+                            @if (primaryRole != "SuperAdmin" && primaryRole != "TheatreAdmin")
+                            {
+                                <form asp-action="AssignTheatreAdmin" asp-controller="SuperAdmin" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit"
+                                            style="background:#dbeafe;color:#1e40af;border:none;border-radius:6px;padding:0.3rem 0.7rem;font-size:0.8rem;cursor:pointer;"
+                                            onclick="return confirm('Make @user.FullName a Theatre Admin?')">
+                                        Make Theatre Admin
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span style="color:#a0aec0; font-size:0.8rem;">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

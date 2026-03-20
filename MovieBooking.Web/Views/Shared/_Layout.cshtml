@@ -1,0 +1,140 @@
+﻿@* =============================================================================
+   Views/Shared/_Layout.cshtml
+   =============================================================================
+   WHAT IS _Layout.cshtml?
+     The master template. Every view that sets Layout = "_Layout" gets this
+     HTML wrapper. @RenderBody() is replaced by the view's content.
+     @RenderSection("Scripts", required: false) renders any @section Scripts {}
+     blocks defined in child views (e.g., validation scripts).
+
+   AUTH-AWARE NAVBAR:
+     @User.Identity!.IsAuthenticated → true if logged in
+     @User.IsInRole("SuperAdmin")    → true if user has that role
+     These work because ASP.NET populates the User (ClaimsPrincipal) from
+     the auth cookie on every request.
+============================================================================= *@
+
+@* Views/Shared/_Layout.cshtml — UPDATED
+   Key fixes:
+     1. Sign In link uses .nav-link-signin class — visible on dark background
+     2. Movies link points to Movie/Index directly (not Home/Index)
+     3. Nav links are properly spaced and styled
+     4. movie.css also linked here so it applies everywhere
+*@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — CinemaBook</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/movie.css" asp-append-version="true" />
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+
+            @* Brand *@
+            <a asp-action="Index" asp-controller="Movie" class="nav-brand">
+                🎬 CinemaBook
+            </a>
+
+            @* Left nav links *@
+            <div class="nav-links">
+                <a asp-action="Index" asp-controller="Movie" class="nav-link">Movies</a>
+
+                @if (User.Identity!.IsAuthenticated)
+                {
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        <a asp-action="Dashboard" asp-controller="SuperAdmin" class="nav-link nav-link-admin">
+                            ⚙ Super Admin
+                        </a>
+                        <a asp-action="Manage" asp-controller="Movie" class="nav-link nav-link-admin">
+                            🎬 Manage Movies
+                        </a>
+                        <a asp-action="Manage" asp-controller="Theatre" class="nav-link nav-link-admin">
+                            🏢 Theatres
+                        </a>
+                        <a asp-controller="Show" asp-action="Manage" class="nav-link nav-link-admin">
+                            🎬 Shows
+                        </a>
+                        <a asp-action="MyBookings" asp-controller="Booking" class="nav-link">
+                            My Bookings
+                        </a>
+                    }
+                    else if (User.IsInRole("TheatreAdmin"))
+                    {
+                        <a asp-action="Dashboard" asp-controller="TheatreAdmin" class="nav-link nav-link-admin">
+                            🏢 My Theatre
+                        </a>
+                        <a asp-action="Manage" asp-controller="Movie" class="nav-link nav-link-admin">
+                            🎬 Movies
+                        </a>
+                        <a asp-action="Manage" asp-controller="Theatre" class="nav-link nav-link-admin">
+                            🏢 Theatres
+                        </a>
+                        <a asp-controller="Show" asp-action="Manage" class="nav-link nav-link-admin">
+                            🎬 Shows
+                        </a>
+                        <a asp-action="MyBookings" asp-controller="Booking" class="nav-link">
+                            My Bookings
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-action="MyBookings" asp-controller="Booking" class="nav-link">
+                            My Bookings
+                        </a>
+                        <a asp-action="Index" asp-controller="Show" class="nav-link">Shows</a>
+                    }
+                }
+            </div>
+
+            @* Right side: user info or login/register *@
+            @if (User.Identity!.IsAuthenticated)
+            {
+                <div class="nav-user">
+                    <span class="nav-username">👤 @User.Identity.Name</span>
+                    <form asp-action="Logout" asp-controller="Account" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-logout">Sign Out</button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="nav-user">
+                    @* .nav-link-signin gives visible border so it stands out on dark bg *@
+                    <a asp-action="Login" asp-controller="Account" class="nav-link nav-link-signin">
+                        Sign In
+                    </a>
+                    <a asp-action="Register" asp-controller="Account" class="btn-nav-register">
+                        Register
+                    </a>
+                </div>
+            }
+
+        </div>
+    </nav>
+
+    <main class="main-content">
+        @RenderBody()
+    </main>
+
+    <footer class="footer">
+        <p>&copy; @DateTime.Now.Year CinemaBook — All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+

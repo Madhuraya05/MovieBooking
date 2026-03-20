@@ -1,0 +1,58 @@
+@* =============================================================================
+   Views/Payment/WaitingConfirmation.cshtml
+   Polls until webhook confirms the booking, then redirects
+============================================================================= *@
+@{
+    ViewData["Title"] = "Confirming Payment...";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:500px;text-align:center;padding-top:4rem">
+    <div style="font-size:3rem;margin-bottom:1rem;animation:spin 2s linear infinite">⏳</div>
+    <h1 style="font-size:1.4rem;font-weight:700;margin-bottom:.5rem">Confirming your payment...</h1>
+    <p style="color:var(--text-muted);margin-bottom:2rem">
+        Please wait while we confirm your booking. This usually takes a few seconds.
+    </p>
+    <div style="height:4px;background:var(--border);border-radius:999px;overflow:hidden">
+        <div id="progressBar" style="height:100%;background:var(--primary);border-radius:999px;width:0;transition:width .5s"></div>
+    </div>
+</div>
+
+<style>
+@@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+@section Scripts {
+<script>
+const bookingId = @ViewBag.BookingId;
+let progress = 0;
+const bar = document.getElementById('progressBar');
+
+const interval = setInterval(async () => {
+    progress = Math.min(progress + 8, 90);
+    bar.style.width = progress + '%';
+
+    const res = await fetch(`/Payment/CheckStatus?bookingId=${bookingId}`);
+    const data = await res.json();
+
+    if (data.confirmed) {
+        bar.style.width = '100%';
+        clearInterval(interval);
+        setTimeout(() => {
+            window.location.href = `/Booking/Confirmation/${bookingId}`;
+        }, 500);
+    }
+}, 1500);
+
+// Timeout after 30 seconds — something went wrong
+setTimeout(() => {
+    clearInterval(interval);
+    window.location.href = `/Booking/Confirmation/${bookingId}`;
+}, 30000);
+</script>
+}
+
+
+@* =============================================================================
+   Views/Payment/PaymentFailed.cshtml
+============================================================================= *@

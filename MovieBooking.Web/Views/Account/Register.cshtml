@@ -1,0 +1,111 @@
+﻿@* =============================================================================
+   Views/Account/Register.cshtml
+   =============================================================================
+   WHAT IS @model?
+     Tells Razor which ViewModel this view works with.
+     Now we get IntelliSense, type safety, and model binding.
+     When the form is submitted, ASP.NET automatically maps form fields
+     to RegisterViewModel properties by matching the "name" attributes
+     (which asp-for generates automatically).
+
+   KEY TAG HELPERS USED:
+     asp-for        → binds to a model property (sets name, id, type automatically)
+     asp-validation-for → shows validation error for a specific field
+     asp-validation-summary → shows all ModelState errors at the top
+     asp-action / asp-controller → generates the correct URL for form action
+============================================================================= *@
+
+@model MovieBooking.Web.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Create Account";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+
+        <div class="auth-header">
+            <div class="auth-logo">🎬</div>
+            <h1>Create Account</h1>
+            <p>Join us and start booking tickets</p>
+        </div>
+
+        @* asp-validation-summary="ModelOnly" shows errors added with
+           ModelState.AddModelError("", "...") — the "" key means "model-level" error *@
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+        @* TempData success message (from a redirect) *@
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">@TempData["Success"]</div>
+        }
+
+        <form asp-action="Register" asp-controller="Account" method="post">
+            @* Anti-forgery token — hidden field that prevents CSRF attacks.
+               Must match [ValidateAntiForgeryToken] on the controller action. *@
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label asp-for="FullName" class="form-label"></label>
+                <input asp-for="FullName" class="form-control" placeholder="Enter your full name" />
+                @* asp-validation-for shows the error message for THIS field only *@
+                <span asp-validation-for="FullName" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" placeholder="Enter your email" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="PhoneNumber" class="form-label"></label>
+                <input asp-for="PhoneNumber" class="form-control" placeholder="Enter your phone number" />
+                <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password" class="form-label"></label>
+                <div class="input-with-toggle">
+                    <input asp-for="Password" class="form-control" id="passwordInput" placeholder="Min. 8 characters" />
+                    <button type="button" class="toggle-password" onclick="togglePassword('passwordInput', this)">👁</button>
+                </div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="ConfirmPassword" class="form-label"></label>
+                <div class="input-with-toggle">
+                    <input asp-for="ConfirmPassword" class="form-control" id="confirmInput" placeholder="Repeat your password" />
+                    <button type="button" class="toggle-password" onclick="togglePassword('confirmInput', this)">👁</button>
+                </div>
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn-auth">Create Account</button>
+
+            <p class="auth-footer">
+                Already have an account?
+                <a asp-action="Login" asp-controller="Account">Sign in here</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @* Client-side validation — prevents round trip to server for basic errors *@
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁';
+            }
+        }
+    </script>
+}

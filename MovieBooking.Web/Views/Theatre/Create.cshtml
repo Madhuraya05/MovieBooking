@@ -1,0 +1,53 @@
+@* =============================================================================
+   Views/Theatre/Create.cshtml
+============================================================================= *@
+@model MovieBooking.Web.Models.TheatreViewModel
+@{
+    ViewData["Title"] = "Add Theatre";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <div class="form-page-header">
+        <a asp-action="Manage" asp-controller="Theatre" class="back-link">← Back to Theatres</a>
+        <h1 class="page-title">🏢 Add Theatre</h1>
+    </div>
+    <div class="form-card">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        <form asp-action="Create" asp-controller="Theatre" method="post">
+            @Html.AntiForgeryToken()
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" placeholder="e.g. PVR Phoenix Mall" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="City" class="form-label"></label>
+                    <input asp-for="City" class="form-control" placeholder="e.g. Mumbai" />
+                    <span asp-validation-for="City" class="text-danger small"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="PhoneNumber" class="form-label"></label>
+                    <input asp-for="PhoneNumber" class="form-control" placeholder="+91 98765 43210" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label asp-for="Address" class="form-label"></label>
+                <textarea asp-for="Address" class="form-control" rows="2"
+                          placeholder="Full address of the theatre..."></textarea>
+                <span asp-validation-for="Address" class="text-danger small"></span>
+            </div>
+            <div class="form-actions">
+                <a asp-action="Manage" asp-controller="Theatre" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Create Theatre</button>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+
+
+@* =============================================================================
+   Views/Theatre/Edit.cshtml
+============================================================================= *@

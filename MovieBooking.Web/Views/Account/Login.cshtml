@@ -1,0 +1,103 @@
+﻿@* =============================================================================
+   Views/Account/Login.cshtml
+   =============================================================================
+   IMPORTANT: The form action posts to Login(LoginViewModel model, string? returnUrl)
+   The returnUrl comes from the hidden input below — ASP.NET model binding
+   automatically picks it up from the query string or form field.
+============================================================================= *@
+
+@model MovieBooking.Web.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Sign In";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var returnUrl = ViewData["ReturnUrl"]?.ToString();
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+
+        <div class="auth-header">
+            <div class="auth-logo">🎬</div>
+            <h1>Welcome Back</h1>
+            <p>Sign in to your account</p>
+        </div>
+
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">@TempData["Success"]</div>
+        }
+
+        @* Pass returnUrl as a hidden field so it survives the POST *@
+        <form asp-action="Login" asp-controller="Account" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+            <div class="form-group">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" placeholder="Enter your email" autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password" class="form-label"></label>
+                <div class="input-with-toggle">
+                    <input asp-for="Password" class="form-control" id="passwordInput" placeholder="Enter your password" autocomplete="current-password" />
+                    <button type="button" class="toggle-password" onclick="togglePassword()">👁</button>
+                </div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="form-check-row">
+                <label class="checkbox-label">
+                    <input asp-for="RememberMe" type="checkbox" />
+                    <span>Remember me for 7 days</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-auth">Sign In</button>
+
+            <p class="auth-footer">
+                Don't have an account?
+                <a asp-action="Register" asp-controller="Account">Create one here</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function togglePassword() {
+            const input = document.getElementById('passwordInput');
+            const btn = document.querySelector('.toggle-password');
+            if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+            else { input.type = 'password'; btn.textContent = '👁'; }
+        }
+    </script>
+}
+
+
+
+@*User logs in
+      ↓
+Identity creates auth cookie
+      ↓
+Browser stores cookie
+      ↓
+Next request
+      ↓
+Middleware reads cookie
+      ↓
+Creates ClaimsPrincipal
+      ↓
+HttpContext.User = ClaimsPrincipal
+      ↓
+Controller executes
+      ↓
+View renders
+      ↓
+Layout renders
+      ↓
+All can access User*@

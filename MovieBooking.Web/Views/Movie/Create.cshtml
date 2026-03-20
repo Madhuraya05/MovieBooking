@@ -1,0 +1,151 @@
+@* =============================================================================
+   Views/Movie/Create.cshtml — Admin: Add New Movie
+   =============================================================================
+   KEY THING: enctype="multipart/form-data" is REQUIRED when a form uploads files.
+   Without it, the file bytes are NOT sent — only the filename string arrives.
+   ASP.NET will receive null for IFormFile if this is missing.
+============================================================================= *@
+
+@model MovieBooking.Web.Models.MovieViewModel
+@{
+    ViewData["Title"] = "Add New Movie";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="form-page-header">
+        <a asp-action="Manage" asp-controller="Movie" class="back-link">← Back to Manage</a>
+        <h1 class="page-title">🎬 Add New Movie</h1>
+    </div>
+
+    <div class="form-card">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        @* enctype="multipart/form-data" — REQUIRED for file uploads *@
+        <form asp-action="Create" asp-controller="Movie" method="post"
+              enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label asp-for="Title" class="form-label"></label>
+                    <input asp-for="Title" class="form-control" placeholder="e.g. Avengers: Endgame" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Genre" class="form-label"></label>
+                    <select asp-for="Genre" class="form-control">
+                        <option value="">-- Select Genre --</option>
+                        <option>Action</option>
+                        <option>Comedy</option>
+                        <option>Drama</option>
+                        <option>Horror</option>
+                        <option>Romance</option>
+                        <option>Sci-Fi</option>
+                        <option>Thriller</option>
+                        <option>Animation</option>
+                        <option>Documentary</option>
+                        <option>Family</option>
+                    </select>
+                    <span asp-validation-for="Genre" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Language" class="form-label"></label>
+                    <select asp-for="Language" class="form-control">
+                        <option value="">-- Select Language --</option>
+                        <option>English</option>
+                        <option>Hindi</option>
+                        <option>Tamil</option>
+                        <option>Telugu</option>
+                        <option>Malayalam</option>
+                        <option>Kannada</option>
+                        <option>Punjabi</option>
+                    </select>
+                    <span asp-validation-for="Language" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="DurationMinutes" class="form-label"></label>
+                    <input asp-for="DurationMinutes" class="form-control" type="number"
+                           min="1" max="600" placeholder="e.g. 148" />
+                    <span asp-validation-for="DurationMinutes" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="ReleaseDate" class="form-label"></label>
+                    <input asp-for="ReleaseDate" class="form-control" type="date" />
+                    <span asp-validation-for="ReleaseDate" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Rating" class="form-label"></label>
+                    <select asp-for="Rating" class="form-control">
+                        <option value="">-- Select Rating --</option>
+                        <option>U</option>
+                        <option>UA</option>
+                        <option>A</option>
+                        <option>S</option>
+                    </select>
+                    <span asp-validation-for="Rating" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control"
+                          rows="4" placeholder="Write a short description of the movie..."></textarea>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="TrailerUrl" class="form-label"></label>
+                <input asp-for="TrailerUrl" class="form-control"
+                       placeholder="https://youtube.com/watch?v=..." />
+                <span asp-validation-for="TrailerUrl" class="text-danger small"></span>
+            </div>
+
+            @* ── POSTER UPLOAD ── *@
+            <div class="form-group">
+                <label asp-for="PosterFile" class="form-label">Movie Poster <span style="color:#e8344a">*</span></label>
+                <div class="poster-upload-area" id="uploadArea">
+                    <input asp-for="PosterFile" type="file" class="poster-file-input"
+                           id="posterInput" accept="image/jpeg,image/png,image/webp"
+                           onchange="previewPoster(this)" />
+                    <div class="poster-upload-placeholder" id="uploadPlaceholder">
+                        <div style="font-size:2rem">🖼</div>
+                        <div style="font-weight:500; margin-top:.5rem">Click to upload poster</div>
+                        <div style="font-size:.8rem; color:var(--text-muted)">JPEG, PNG or WebP · Max 5MB · Recommended 300×450px</div>
+                    </div>
+                    <img id="posterPreview" src="" alt="Preview" class="poster-preview" style="display:none" />
+                </div>
+                <span asp-validation-for="PosterFile" class="text-danger small"></span>
+            </div>
+
+            <div class="form-actions">
+                <a asp-action="Manage" asp-controller="Movie" class="btn-secondary">Cancel</a>
+                <button type="submit" class="btn-primary">Add Movie</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function previewPoster(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const preview = document.getElementById('posterPreview');
+                    const placeholder = document.getElementById('uploadPlaceholder');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+}

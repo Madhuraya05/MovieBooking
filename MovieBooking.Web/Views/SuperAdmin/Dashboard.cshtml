@@ -1,0 +1,68 @@
+﻿@* Views/SuperAdmin/Dashboard.cshtml — UPDATED with proper stat cards *@
+@{
+    ViewData["Title"] = "Super Admin Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">⚙ Super Admin</h1>
+            <p style="color:var(--text-muted); margin-top:.2rem">Welcome back, @User.Identity!.Name</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✓ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @* Stat cards *@
+    <div class="dashboard-grid">
+        <div class="stat-card">
+            <div class="stat-number">@ViewBag.TotalUsers</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">@ViewBag.ActiveUsers</div>
+            <div class="stat-label">Active Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color:#10b981">@(ViewBag.TotalMovies ?? 0)</div>
+            <div class="stat-label">Movies</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" style="color:#6366f1">@(ViewBag.TotalTheatres ?? 0)</div>
+            <div class="stat-label">Theatres</div>
+        </div>
+    </div>
+
+    @* Quick Actions *@
+    <div class="card">
+        <h2 style="font-size:1rem; font-weight:700; margin-bottom:1rem; color:var(--text)">Quick Actions</h2>
+        <div class="quick-actions">
+            <a asp-action="Users" asp-controller="SuperAdmin" class="btn-primary">
+                👥 Manage Users
+            </a>
+            <a asp-action="Create" asp-controller="Movie" class="btn-primary" style="background:#6366f1">
+                🎬 Add Movie
+            </a>
+            <a asp-action="Manage" asp-controller="Movie" class="btn-secondary">
+                📋 All Movies
+            </a>
+            <a asp-action="Schedule" asp-controller="Show" class="btn-primary" style="background:#10b981">
+                🎟 Schedule Show
+            </a>
+            <a asp-action="Manage" asp-controller="Show" class="btn-secondary">
+                📋 All Shows
+            </a>
+            <a asp-action="Manage" asp-controller="Theatre" class="btn-secondary">
+                🏢 Theatres
+            </a>
+        </div>
+    </div>
+</div>

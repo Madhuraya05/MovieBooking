@@ -1,0 +1,157 @@
+@* Views/Booking/Summary.cshtml — Booking Summary with 10-min countdown *@
+@model MovieBooking.Web.Models.BookingSummaryViewModel
+@{
+    ViewData["Title"] = "Booking Summary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:760px">
+    <div style="margin:1.5rem 0 1rem">
+        <h1 class="page-title" style="font-size:1.4rem">📋 Booking Summary</h1>
+    </div>
+
+    @* ── COUNTDOWN TIMER ── *@
+    <div class="timer-bar" id="timerBar">
+        <div class="timer-icon">⏱</div>
+        <div>
+            <div style="font-weight:600;font-size:.875rem">Seats reserved for</div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.7)">Complete payment before time runs out</div>
+        </div>
+        <div id="countdown" class="timer-count">10:00</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:1.25rem;align-items:flex-start">
+
+        @* ── LEFT: Show + Seat Details ── *@
+        <div>
+            @* Movie / Show info *@
+            <div class="card" style="margin-bottom:1rem">
+                <div style="display:flex;gap:1rem;align-items:flex-start">
+                    <img src="@(Model.PosterUrl ?? "/images/no-poster.jpg")"
+                         alt="@Model.MovieTitle"
+                         style="width:70px;height:105px;object-fit:cover;border-radius:8px;flex-shrink:0" />
+                    <div>
+                        <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:.4rem">@Model.MovieTitle</h2>
+                        <div style="font-size:.825rem;color:var(--text-muted);display:flex;flex-direction:column;gap:.25rem">
+                            <span>📅 @Model.ShowDate.ToString("dddd, dd MMMM yyyy")</span>
+                            <span>🕐 @DateTime.Today.Add(Model.StartTime).ToString("hh:mm tt")</span>
+                            <span>📍 @Model.TheatreName, @Model.City</span>
+                            <span>🎭 @Model.ScreenName</span>
+                            <span>🌐 @Model.Language</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Selected seats *@
+            <div class="card">
+                <h3 style="font-size:.875rem;font-weight:700;margin-bottom:.75rem">
+                    Selected Seats (@Model.Seats.Count)
+                </h3>
+                <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem">
+                    @foreach (var seat in Model.Seats)
+                    {
+                        var bg = seat.Category switch {
+                            "VIP"     => "#fff0f2",
+                            "Premium" => "#eef2ff",
+                            _         => "#f0fdf4"
+                        };
+                        var color = seat.Category switch {
+                            "VIP"     => "#c0253a",
+                            "Premium" => "#4338ca",
+                            _         => "#065f46"
+                        };
+                        <div style="background:@bg;color:@color;border:1.5px solid currentColor;border-radius:6px;padding:.3rem .65rem;font-size:.8rem;font-weight:700">
+                            @seat.SeatLabel
+                            <span style="font-weight:400;font-size:.7rem;opacity:.7"> @seat.Category</span>
+                        </div>
+                    }
+                </div>
+                <div style="font-size:.78rem;color:var(--text-muted)">
+                    Ref: <strong style="color:var(--text);font-family:var(--font-mono,monospace)">@Model.BookingReference</strong>
+                </div>
+            </div>
+        </div>
+
+        @* ── RIGHT: Price Breakdown + Pay button ── *@
+        <div>
+            <div class="card">
+                <h3 style="font-size:.875rem;font-weight:700;margin-bottom:1rem">Price Breakdown</h3>
+
+                @foreach (var seat in Model.Seats)
+                {
+                    <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-muted);margin-bottom:.3rem">
+                        <span>@seat.SeatLabel (@seat.Category)</span>
+                        <span>₹@seat.Price.ToString("F0")</span>
+                    </div>
+                }
+
+                <div style="border-top:1px solid var(--border);margin:.75rem 0"></div>
+
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-muted);margin-bottom:.3rem">
+                    <span>Subtotal</span>
+                    <span>₹@Model.SubTotal.ToString("F0")</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem">
+                    <span>Convenience fee</span>
+                    <span>₹@Model.ConvenienceFee.ToString("F0")</span>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:700;color:var(--text);padding-top:.5rem;border-top:2px solid var(--border)">
+                    <span>Total</span>
+                    <span style="color:var(--primary)">₹@Model.TotalAmount.ToString("F0")</span>
+                </div>
+
+                <form asp-action="ProceedToPayment" asp-controller="Booking" method="post"
+                      style="margin-top:1.25rem">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                    <button type="submit" class="btn-primary" style="width:100%;padding:.8rem;font-size:.95rem">
+                        💳 Confirm & Pay ₹@Model.TotalAmount.ToString("F0")
+                    </button>
+                </form>
+
+                <form asp-action="Cancel" asp-controller="Booking" method="post"
+                      style="margin-top:.6rem">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                    <button type="submit" class="btn-secondary" style="width:100%"
+                            onclick="return confirm('Cancel this booking and release seats?')">
+                        Cancel Booking
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+<script>
+// Countdown timer
+const expiresAt  = new Date('@(Model.ExpiresAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss"))Z');
+const countdownEl = document.getElementById('countdown');
+const timerBar    = document.getElementById('timerBar');
+
+function updateTimer() {
+    const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    countdownEl.textContent = `${mins}:${String(secs).padStart(2,'0')}`;
+
+    // Change color as time runs low
+    countdownEl.className = 'timer-count';
+    if (remaining <= 60)       countdownEl.classList.add('urgent');
+    else if (remaining <= 120) countdownEl.classList.add('warning');
+
+    if (remaining === 0) {
+        // Time's up — redirect back to seat selection
+        window.location.href = '/Booking/SelectSeats?showId=@Model.ShowId&expired=1';
+    }
+}
+
+updateTimer();
+setInterval(updateTimer, 1000);
+</script>
+}

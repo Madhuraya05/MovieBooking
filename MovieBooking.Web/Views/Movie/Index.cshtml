@@ -1,0 +1,110 @@
+﻿@* =============================================================================
+   Views/Movie/Index.cshtml  — Public Movie Listing
+   =============================================================================
+   WHAT'S HAPPENING:
+     @model IEnumerable<Movie> → list of active movies passed from controller
+     ViewBag.Cloudinary        → CloudinaryService instance for resizing URLs
+     ViewBag.Genres            → list of genre strings for the filter dropdown
+     ViewBag.Search/Genre      → current filter values (to keep inputs filled)
+============================================================================= *@
+
+@model IEnumerable<MovieBooking.Models.Movie>
+@using MovieBooking.Infrastructure.Services
+@{
+    ViewData["Title"] = "Now Showing";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var cloudinary = ViewBag.Cloudinary as CloudinaryService;
+    var genres = ViewBag.Genres as List<string> ?? new List<string>();
+}
+
+<div class="container">
+
+    @* ── HEADER ── *@
+    <div class="page-header">
+        <h1 class="page-title">🎬 Now Showing</h1>
+        @if (User.IsInRole("SuperAdmin") || User.IsInRole("TheatreAdmin"))
+        {
+            <a asp-action="Create" asp-controller="Movie" class="btn-primary">+ Add Movie</a>
+        }
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    @* ── SEARCH & FILTER ── *@
+    <form method="get" asp-action="Index" class="filter-bar">
+        <input type="text" name="search" value="@ViewBag.Search"
+               placeholder="Search movies..." class="filter-input" />
+
+        <select name="genre" class="filter-select">
+            <option value="">All Genres</option>
+            @foreach (var g in genres)
+            {
+                <option value="@g" selected="@(ViewBag.Genre == g)">@g</option>
+            }
+        </select>
+
+        <button type="submit" class="btn-primary">Search</button>
+        @if (!string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.Genre as string))
+        {
+            <a asp-action="Index" class="btn-secondary">Clear</a>
+        }
+    </form>
+
+    @* ── MOVIE GRID ── *@
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div style="font-size:3rem">🎥</div>
+            <p>No movies found. Try adjusting your search.</p>
+        </div>
+    }
+    else
+    {
+        <div class="movie-grid">
+            @foreach (var movie in Model)
+            {
+                <div class="movie-card">
+                    <a asp-action="Detail" asp-controller="Movie" asp-route-id="@movie.MovieId" class="movie-card-link">
+                        <div class="movie-poster-wrap">
+                            <img src="@(cloudinary?.GetResizedUrl(movie.PosterUrl, 300, 450) ?? movie.PosterUrl ?? "/images/no-poster.jpeg")"
+                                 alt="@movie.Title poster"
+                                 class="movie-poster"
+                                 loading="lazy" />
+                            @if (movie.Rating != null)
+                            {
+                                <span class="rating-badge">@movie.Rating</span>
+                            }
+                        </div>
+                        <div class="movie-info">
+                            <h3 class="movie-title">@movie.Title</h3>
+                            <div class="movie-meta">
+                                <span>@movie.Genre</span>
+                                <span>·</span>
+                                <span>@movie.DurationMinutes min</span>
+                            </div>
+                            <div class="movie-lang">@movie.Language</div>
+                        </div>
+                    </a>
+
+                    @if (User.IsInRole("SuperAdmin") || User.IsInRole("TheatreAdmin"))
+                    {
+                        <div class="movie-admin-bar">
+                            <a asp-action="Edit" asp-controller="Movie" asp-route-id="@movie.MovieId" class="btn-sm-edit">Edit</a>
+                            <form asp-action="Delete" asp-controller="Movie" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@movie.MovieId" />
+                                <button type="submit" class="btn-sm-delete"
+                                        onclick="return confirm('Remove @movie.Title from listings?')">
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

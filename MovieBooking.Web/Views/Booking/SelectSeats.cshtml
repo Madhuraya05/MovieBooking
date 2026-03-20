@@ -1,0 +1,299 @@
+@* =============================================================================
+   Views/Booking/SelectSeats.cshtml — Interactive Seat Selection Map
+   =============================================================================
+   HOW SEAT SELECTION WORKS:
+     1. Each seat is a <button> with data-seat-id, data-price, data-category
+     2. User clicks a seat → JS toggles "selected" class
+     3. A running total updates in the sidebar
+     4. On "Confirm Selection" → JS builds a comma-separated SeatIds string
+        into the hidden input, then submits the form to POST /Booking/HoldSeats
+============================================================================= *@
+
+@model MovieBooking.Web.Models.SeatMapViewModel
+@{
+    ViewData["Title"] = "Select Seats";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:1100px">
+
+    @if (TempData["Error"] != null)
+    { <div class="alert alert-danger" style="margin-top:1rem">@TempData["Error"]</div> }
+
+    <div class="back-link" style="margin-top:1rem">
+        <a asp-action="Detail" asp-controller="Movie"
+           asp-route-id="@(ViewContext.HttpContext.Request.Query["movieId"])"
+           style="color:var(--text-muted);text-decoration:none;font-size:.875rem">← Back to Movie</a>
+    </div>
+
+    @* Show info bar *@
+    <div class="show-info-bar">
+        <img src="@(Model.PosterUrl ?? "/images/no-poster.jpg")"
+             alt="@Model.MovieTitle" class="show-info-poster" />
+        <div class="show-info-details">
+            <h1 class="show-info-title">@Model.MovieTitle</h1>
+            <div class="show-info-meta">
+                <span>📅 @Model.ShowDate.ToString("ddd, dd MMM yyyy")</span>
+                <span>🕐 @DateTime.Today.Add(Model.StartTime).ToString("hh:mm tt")</span>
+                <span>📍 @Model.TheatreName</span>
+                <span>🎭 @Model.ScreenName (@Model.ScreenType)</span>
+                <span>🌐 @Model.Language</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="seat-map-layout">
+
+        @* ── SEAT MAP ── *@
+        <div class="seat-map-main">
+
+            @* Screen indicator *@
+            <div class="screen-indicator">
+                <div class="screen-bar">▬▬▬▬▬▬▬▬▬ SCREEN ▬▬▬▬▬▬▬▬▬</div>
+                <div class="screen-label">All eyes this way</div>
+            </div>
+
+            @* Seat grid *@
+            <div class="seat-grid" id="seatGrid">
+                @foreach (var row in Model.SeatsByRow)
+                {
+                    <div class="seat-row-wrapper">
+                        <div class="row-letter">@row.Key</div>
+                        <div class="seats-in-row">
+                            @foreach (var seat in row.Value)
+                            {
+                                var cssClass = seat.Status switch {
+                                    "Booked" => "seat seat-booked",
+                                    "Held"   => "seat seat-held",
+                                    _ => $"seat seat-available seat-{seat.Category.ToLower()}"
+                                };
+
+                                var disabled = seat.Status != "Available";
+
+                                <button type="button"
+                                        class="@cssClass"
+                                        data-seat-id="@seat.SeatId"
+                                        data-price="@seat.FinalPrice"
+                                        data-label="@seat.SeatLabel"
+                                        data-category="@seat.Category"
+                                        @(disabled ? "disabled" : "")
+                                        onclick="toggleSeat(this)"
+                                        title="@seat.SeatLabel — @seat.Category — ₹@seat.FinalPrice">
+                                    @seat.SeatNumber
+                                </button>
+                            }
+                        </div>
+                        <div class="row-letter">@row.Key</div>
+                    </div>
+                }
+            </div>
+
+            @* Legend *@
+            <div class="seat-legend">
+                <div class="legend-item"><div class="legend-box seat-available seat-vip"></div> VIP</div>
+                <div class="legend-item"><div class="legend-box seat-available seat-premium"></div> Premium</div>
+                <div class="legend-item"><div class="legend-box seat-available seat-standard"></div> Standard</div>
+                <div class="legend-item"><div class="legend-box seat-selected-demo"></div> Selected</div>
+                <div class="legend-item"><div class="legend-box seat-booked"></div> Taken</div>
+            </div>
+        </div>
+
+        @* ── BOOKING SIDEBAR ── *@
+        <div class="booking-sidebar">
+            <div class="sidebar-card">
+                <h3 class="sidebar-title">Your Selection</h3>
+
+                <div id="emptyState" class="empty-selection">
+                    Click seats on the map to select them
+                </div>
+
+                <div id="selectedList" style="display:none">
+                    <div id="seatItems" class="seat-items-list"></div>
+
+                    <div class="price-breakdown">
+                        <div class="price-row">
+                            <span>Subtotal</span>
+                            <span id="subtotal">₹0</span>
+                        </div>
+                        <div class="price-row">
+                            <span>Convenience fee</span>
+                            <span>₹30</span>
+                        </div>
+                        <div class="price-row price-total">
+                            <span>Total</span>
+                            <span id="totalAmount">₹30</span>
+                        </div>
+                    </div>
+
+                    @* The hold form — hidden inputs built by JS *@
+                    <form asp-action="HoldSeats" asp-controller="Booking" method="post"
+                          id="holdForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ShowId" value="@Model.ShowId" />
+                        <input type="hidden" name="SelectedSeatIds" id="selectedSeatIds" />
+                        <button type="submit" class="btn-primary" style="width:100%"
+                                id="confirmBtn" onclick="return prepareSubmit()">
+                            Confirm Selection
+                        </button>
+                    </form>
+
+                    <p style="font-size:.72rem;color:var(--text-muted);text-align:center;margin-top:.5rem">
+                        Seats held for 10 minutes after confirmation
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ── LAYOUT ── */
+.show-info-bar { display:flex; gap:1rem; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.25rem; margin:1rem 0 1.5rem; box-shadow:var(--shadow-sm); }
+.show-info-poster { width:52px; height:78px; object-fit:cover; border-radius:6px; flex-shrink:0; }
+.show-info-title { font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:.3rem; }
+.show-info-meta { display:flex; flex-wrap:wrap; gap:.75rem; font-size:.8rem; color:var(--text-muted); }
+
+
+/* ── SCREEN ── */
+.screen-indicator { text-align:center; margin-bottom:1.5rem; }
+.screen-bar { background:var(--dark); color:rgba(255,255,255,.4); padding:.4rem 2rem; border-radius:4px; font-size:.7rem; letter-spacing:.12em; display:inline-block; max-width:500px; width:80%; }
+.screen-label { font-size:.7rem; color:var(--text-muted); margin-top:.3rem; }
+
+/* ── SEAT GRID ── */
+.seat-map-main { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; box-shadow:var(--shadow-sm); overflow-x:auto; }
+.seat-grid { display:flex; flex-direction:column; gap:5px; min-width:max-content; }
+.seat-row-wrapper { display:flex; align-items:center; gap:8px; }
+.row-letter { width:18px; font-size:.7rem; font-weight:700; color:var(--text-muted); text-align:center; flex-shrink:0; }
+.seats-in-row { display:flex; gap:4px; flex-wrap:nowrap; }
+
+/* ── SEATS ── */
+.seat {
+    width:30px; height:28px; border-radius:5px 5px 3px 3px;
+    font-size:.62rem; font-weight:600; cursor:pointer;
+    border:1.5px solid; flex-shrink:0;
+    transition:transform .1s, box-shadow .1s;
+    position:relative;
+}
+.seat:hover:not(:disabled) { transform:scale(1.15); box-shadow:0 2px 8px rgba(0,0,0,.15); }
+.seat:active:not(:disabled) { transform:scale(1.05); }
+
+/* Category colors */
+.seat-vip      { background:#fff0f2; border-color:#e8344a; color:#c0253a; }
+.seat-premium  { background:#eef2ff; border-color:#6366f1; color:#4338ca; }
+.seat-standard { background:#f0fdf4; border-color:#10b981; color:#065f46; }
+
+/* Selected state */
+.seat.selected { background:var(--primary) !important; border-color:var(--primary-dark) !important; color:#fff !important; transform:scale(1.1); box-shadow:0 2px 8px rgba(232,52,74,.35); }
+
+/* Taken states */
+.seat-booked { background:#f3f4f6 !important; border-color:#d1d5db !important; color:#9ca3af !important; cursor:not-allowed; }
+.seat-held   { background:#fef3c7 !important; border-color:#f59e0b !important; color:#92400e !important; cursor:not-allowed; }
+
+/* ── LEGEND ── */
+.seat-legend { display:flex; gap:1rem; justify-content:center; margin-top:1.5rem; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:.35rem; font-size:.75rem; color:var(--text-muted); }
+.legend-box { width:22px; height:20px; border-radius:4px 4px 2px 2px; border:1.5px solid; }
+.seat-selected-demo { background:var(--primary) !important; border-color:var(--primary-dark) !important; }
+
+/* ── SIDEBAR ── */
+.booking-sidebar { position:sticky; top:calc(var(--nav-height) + 1rem); }
+.sidebar-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; box-shadow:var(--shadow-sm); }
+.sidebar-title { font-size:.875rem; font-weight:700; margin-bottom:1rem; color:var(--text); }
+.empty-selection { color:var(--text-muted); font-size:.85rem; text-align:center; padding:1.5rem 0; }
+.seat-items-list { margin-bottom:1rem; }
+.seat-item { display:flex; justify-content:space-between; align-items:center; padding:.4rem 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+.seat-item:last-child { border-bottom:none; }
+.seat-item-label { font-weight:600; color:var(--text); }
+.seat-item-cat { font-size:.7rem; color:var(--text-muted); margin-left:.3rem; }
+.seat-item-price { font-weight:600; color:var(--text); }
+.seat-item-remove { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:.9rem; margin-left:.5rem; }
+.seat-item-remove:hover { color:var(--danger); }
+.price-breakdown { border-top:1px solid var(--border); padding-top:.75rem; margin-bottom:1rem; }
+.price-row { display:flex; justify-content:space-between; font-size:.82rem; color:var(--text-muted); margin-bottom:.3rem; }
+.price-total { font-size:.95rem; font-weight:700; color:var(--text); margin-top:.4rem; padding-top:.4rem; border-top:1px solid var(--border); }
+</style>
+
+@section Scripts {
+<script>
+const selected = new Map(); // seatId → { label, price, category, el }
+const MAX_SEATS = 10;
+const CONVENIENCE_FEE = 30;
+
+function toggleSeat(btn) {
+    const id       = btn.dataset.seatId;
+    const price    = parseFloat(btn.dataset.price);
+    const label    = btn.dataset.label;
+    const category = btn.dataset.category;
+
+    if (selected.has(id)) {
+        // Deselect
+        selected.delete(id);
+        btn.classList.remove('selected');
+    } else {
+        if (selected.size >= MAX_SEATS) {
+            alert(`You can select a maximum of ${MAX_SEATS} seats.`);
+            return;
+        }
+        selected.set(id, { label, price, category, el: btn });
+        btn.classList.add('selected');
+    }
+    renderSidebar();
+}
+
+function removeSeat(id) {
+    const entry = selected.get(id);
+    if (entry) entry.el.classList.remove('selected');
+    selected.delete(id);
+    renderSidebar();
+}
+
+function renderSidebar() {
+    const empty = document.getElementById('emptyState');
+    const list  = document.getElementById('selectedList');
+    const items = document.getElementById('seatItems');
+
+    if (selected.size === 0) {
+        empty.style.display = 'block';
+        list.style.display  = 'none';
+        return;
+    }
+
+    empty.style.display = 'none';
+    list.style.display  = 'block';
+
+    let subtotal = 0;
+    let html = '';
+
+    for (const [id, s] of selected) {
+        subtotal += s.price;
+        html += `
+            <div class="seat-item">
+                <div>
+                    <span class="seat-item-label">${s.label}</span>
+                    <span class="seat-item-cat">${s.category}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:.3rem">
+                    <span class="seat-item-price">₹${s.price.toFixed(0)}</span>
+                    <button class="seat-item-remove" onclick="removeSeat('${id}')" title="Remove">✕</button>
+                </div>
+            </div>`;
+    }
+
+    items.innerHTML = html;
+
+    const total = subtotal + CONVENIENCE_FEE;
+    document.getElementById('subtotal').textContent    = '₹' + subtotal.toFixed(0);
+    document.getElementById('totalAmount').textContent = '₹' + total.toFixed(0);
+}
+
+function prepareSubmit() {
+    if (selected.size === 0) {
+        alert('Please select at least one seat.');
+        return false;
+    }
+    document.getElementById('selectedSeatIds').value =
+        Array.from(selected.keys()).join(',');
+    return true;
+}
+</script>
+}

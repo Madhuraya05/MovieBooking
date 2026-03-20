@@ -1,0 +1,105 @@
+@* Views/Theatre/Screens.cshtml — Admin: List of screens for a theatre *@
+@model IEnumerable<MovieBooking.Models.Screen>
+@{
+    ViewData["Title"] = "Screens";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var theatre = ViewBag.Theatre as MovieBooking.Models.Theatre;
+    var seatCounts = ViewBag.SeatCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<div class="container">
+    <div class="form-page-header">
+        <a asp-action="Manage" asp-controller="Theatre" class="back-link">← Back to Theatres</a>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+            <div>
+                <h1 class="page-title">🎭 @theatre?.Name</h1>
+                <p style="color:var(--text-muted);margin-top:.2rem">
+                    📍 @theatre?.City · @theatre?.Address
+                </p>
+            </div>
+            <div style="display:flex;gap:.75rem">
+                <a asp-action="Edit" asp-controller="Theatre"
+                   asp-route-id="@theatre?.TheatreId" class="btn-secondary">Edit Theatre</a>
+                <a asp-action="AddScreen" asp-controller="Theatre"
+                   asp-route-id="@theatre?.TheatreId" class="btn-primary">+ Add Screen</a>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✓ @TempData["Success"]</div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div>🎭</div>
+            <p style="font-size:1.1rem;font-weight:600;margin-bottom:.5rem">No screens yet</p>
+            <p style="margin-bottom:1.5rem">Add your first screen to start scheduling shows.</p>
+            <a asp-action="AddScreen" asp-controller="Theatre"
+               asp-route-id="@theatre?.TheatreId" class="btn-primary">+ Add First Screen</a>
+        </div>
+    }
+    else
+    {
+        <div class="screens-grid">
+            @foreach (var screen in Model)
+            {
+                var seats = seatCounts.ContainsKey(screen.ScreenId) ? seatCounts[screen.ScreenId] : 0;
+                var typeColor = screen.ScreenType switch {
+                    "IMAX"  => "#6366f1",
+                    "4DX"   => "#f59e0b",
+                    "Dolby" => "#10b981",
+                    _       => "var(--primary)"
+                };
+
+                <div class="screen-card">
+                    <div class="screen-card-header">
+                        <div>
+                            <div class="screen-name">@screen.ScreenName</div>
+                            <span class="screen-type-badge" style="background:@(typeColor)20;color:@typeColor">
+                                @screen.ScreenType
+                            </span>
+                        </div>
+                        <div class="screen-seats-count">
+                            <div style="font-size:1.5rem;font-weight:800;color:var(--text)">@seats</div>
+                            <div style="font-size:.72rem;color:var(--text-muted);font-weight:500">seats</div>
+                        </div>
+                    </div>
+
+                    @* Seat category breakdown *@
+                    @{
+                        var screenSeats = await Task.FromResult(new List<MovieBooking.Models.Seat>());
+                    }
+
+                    <div class="screen-card-actions">
+                        <a asp-action="SeatLayout" asp-controller="Theatre"
+                           asp-route-id="@screen.ScreenId" class="btn-sm-view">View Seats</a>
+                        <form asp-action="DeleteScreen" asp-controller="Theatre"
+                              method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="screenId" value="@screen.ScreenId" />
+                            <input type="hidden" name="theatreId" value="@theatre?.TheatreId" />
+                            <button type="submit" class="btn-sm-delete"
+                                    onclick="return confirm('Remove @screen.ScreenName and all its seats?')">
+                                Remove
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+.screens-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.screen-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow-sm); transition: box-shadow .2s, transform .2s; }
+.screen-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.screen-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.screen-name { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; }
+.screen-type-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .2rem .6rem; border-radius: 999px; letter-spacing: .04em; }
+.screen-seats-count { text-align: right; }
+.screen-card-actions { display: flex; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--border); }
+</style>

@@ -1,0 +1,249 @@
+@* =============================================================================
+   Views/Show/Schedule.cshtml — Admin: Schedule a New Show
+   =============================================================================
+   KEY FEATURES:
+     1. Theatre dropdown → AJAX fetches screens for that theatre
+     2. Movie + Start time → JS calculates and shows end time live
+     3. Price multiplier slider with live pricing preview
+============================================================================= *@
+
+@model MovieBooking.Web.Models.ShowViewModel
+@{
+    ViewData["Title"] = "Schedule Show";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="form-page-header">
+        <a asp-action="Manage" asp-controller="Show" class="back-link">← Back to Shows</a>
+        <h1 class="page-title">🎬 Schedule a Show</h1>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:flex-start">
+
+        @* ── MAIN FORM ── *@
+        <div class="form-card">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <form asp-action="Schedule" asp-controller="Show" method="post" id="scheduleForm">
+                @Html.AntiForgeryToken()
+
+                @* ── MOVIE ── *@
+                <div class="form-section-label">Movie</div>
+                <div class="form-group">
+                    <label asp-for="MovieId" class="form-label"></label>
+                    <select asp-for="MovieId" asp-items="Model.Movies"
+                            class="form-control" id="movieSelect"
+                            onchange="onMovieChange(this)">
+                        <option value="">— Select a movie —</option>
+                    </select>
+                    <span asp-validation-for="MovieId" class="text-danger small"></span>
+                </div>
+
+                @* ── VENUE ── *@
+                <div class="form-section-label" style="margin-top:1.25rem">Venue</div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Theatre</label>
+                        <select id="theatreSelect" class="form-control" onchange="loadScreens(this.value)">
+                            <option value="">— Select theatre —</option>
+                            @foreach (var t in Model.Theatres)
+                            {
+                                <option value="@t.Value">@t.Text</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="ScreenId" class="form-label"></label>
+                        <select asp-for="ScreenId" class="form-control" id="screenSelect">
+                            <option value="">— Select theatre first —</option>
+                        </select>
+                        <span asp-validation-for="ScreenId" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                @* ── DATE & TIME ── *@
+                <div class="form-section-label" style="margin-top:1.25rem">Date & Time</div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label asp-for="ShowDate" class="form-label"></label>
+                        <input asp-for="ShowDate" type="date" class="form-control"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               onchange="updatePreview()" />
+                        <span asp-validation-for="ShowDate" class="text-danger small"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="StartTime" class="form-label"></label>
+                        <input asp-for="StartTime" type="time" class="form-control"
+                               id="startTime" onchange="updatePreview()" />
+                        <span asp-validation-for="StartTime" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                @* ── LANGUAGE ── *@
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label asp-for="Language" class="form-label"></label>
+                        <select asp-for="Language" class="form-control">
+                            <option>English</option>
+                            <option>Hindi</option>
+                            <option>Tamil</option>
+                            <option>Telugu</option>
+                            <option>Malayalam</option>
+                            <option>Kannada</option>
+                            <option>Punjabi</option>
+                        </select>
+                    </div>
+
+                    @* ── PRICE MULTIPLIER ── *@
+                    <div class="form-group">
+                        <label asp-for="PriceMultiplier" class="form-label">
+                            Price Multiplier
+                            <span id="multiplierLabel" style="color:var(--primary);font-weight:700;margin-left:.4rem">1.0×</span>
+                        </label>
+                        <input asp-for="PriceMultiplier" type="range" class="form-range"
+                               min="0.5" max="2.0" step="0.1" id="multiplierRange"
+                               oninput="onMultiplierChange(this.value)" />
+                        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted)">
+                            <span>0.5× (discount)</span>
+                            <span>1.0× (normal)</span>
+                            <span>2.0× (premium)</span>
+                        </div>
+                        <span asp-validation-for="PriceMultiplier" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a asp-action="Manage" asp-controller="Show" class="btn-secondary">Cancel</a>
+                    <button type="submit" class="btn-primary">Schedule Show</button>
+                </div>
+            </form>
+        </div>
+
+        @* ── LIVE PREVIEW CARD ── *@
+        <div style="position:sticky;top:calc(var(--nav-height) + 1rem)">
+            <div class="card" id="previewCard">
+                <p style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">
+                    Preview
+                </p>
+
+                <div id="previewContent" style="color:var(--text-muted);font-size:.875rem">
+                    Select a movie and time to see preview
+                </div>
+            </div>
+
+            @* Quick time slots *@
+            <div class="card" style="margin-top:1rem">
+                <p style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">
+                    Common Show Times
+                </p>
+                <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+                    @foreach (var time in new[] { "09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00", "22:30" })
+                    {
+                        <button type="button" class="time-chip" onclick="setTime('@time')">@time</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-section-label { font-size:.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.6rem; padding-bottom:.4rem; border-bottom:1px solid var(--border); }
+.form-range { width:100%; accent-color:var(--primary); height:4px; cursor:pointer; }
+.time-chip { background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.25rem .55rem; font-size:.78rem; font-weight:500; cursor:pointer; transition:all .15s; font-family:inherit; }
+.time-chip:hover { background:var(--primary-light); border-color:var(--primary); color:var(--primary); }
+.preview-row { display:flex; justify-content:space-between; align-items:center; padding:.4rem 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+.preview-row:last-child { border-bottom:none; }
+.preview-label { color:var(--text-muted); }
+.preview-value { font-weight:600; color:var(--text); text-align:right; }
+</style>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+let movieDuration = 0;
+
+function setTime(t) {
+    document.getElementById('startTime').value = t;
+    updatePreview();
+}
+
+async function onMovieChange(sel) {
+    const movieId = sel.value;
+    if (!movieId) { movieDuration = 0; updatePreview(); return; }
+
+    const res = await fetch(`/Show/GetMovieInfo?movieId=${movieId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    movieDuration = data.duration;
+    updatePreview();
+}
+
+async function loadScreens(theatreId) {
+    const sel = document.getElementById('screenSelect');
+    sel.innerHTML = '<option>Loading...</option>';
+    if (!theatreId) { sel.innerHTML = '<option value="">— Select theatre first —</option>'; return; }
+
+    const res = await fetch(`/Show/GetScreens?theatreId=${theatreId}`);
+    const screens = await res.json();
+    sel.innerHTML = '<option value="">— Select screen —</option>' +
+        screens.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function onMultiplierChange(val) {
+    const v = parseFloat(val);
+    document.querySelector('[name="PriceMultiplier"]').value = v;
+    document.getElementById('multiplierLabel').textContent = v.toFixed(1) + '×';
+    updatePreview();
+}
+
+function updatePreview() {
+    const startVal = document.getElementById('startTime').value;
+    const dateVal  = document.querySelector('[name="ShowDate"]').value;
+    const multi    = parseFloat(document.getElementById('multiplierRange').value) || 1;
+    const movieSel = document.getElementById('movieSelect');
+    const movieText = movieSel.options[movieSel.selectedIndex]?.text || '';
+
+    if (!startVal || !movieDuration) {
+        document.getElementById('previewContent').innerHTML =
+            '<p style="color:var(--text-muted);font-size:.875rem">Select a movie and time to see preview</p>';
+        return;
+    }
+
+    const [h, m] = startVal.split(':').map(Number);
+    const startMins = h * 60 + m;
+    const endMins = startMins + movieDuration;
+    const endH = Math.floor(endMins / 60) % 24;
+    const endM = endMins % 60;
+
+    const fmt = (hh, mm) => {
+        const period = hh >= 12 ? 'PM' : 'AM';
+        const h12 = hh % 12 || 12;
+        return `${h12}:${String(mm).padStart(2,'0')} ${period}`;
+    };
+
+    const multiColor = multi > 1 ? '#e8344a' : multi < 1 ? '#10b981' : 'var(--text)';
+    const multiLabel = multi > 1 ? `+${((multi-1)*100).toFixed(0)}% premium` :
+                       multi < 1 ? `-${((1-multi)*100).toFixed(0)}% discount` : 'Normal pricing';
+
+    const dateFormatted = dateVal
+        ? new Date(dateVal + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' })
+        : '—';
+
+    document.getElementById('previewContent').innerHTML = `
+        <div class="preview-row"><span class="preview-label">Movie</span><span class="preview-value" style="max-width:160px;text-align:right">${movieText.split('(')[0].trim()}</span></div>
+        <div class="preview-row"><span class="preview-label">Date</span><span class="preview-value">${dateFormatted}</span></div>
+        <div class="preview-row"><span class="preview-label">Starts</span><span class="preview-value">${fmt(h,m)}</span></div>
+        <div class="preview-row"><span class="preview-label">Ends</span><span class="preview-value">${fmt(endH,endM)}</span></div>
+        <div class="preview-row"><span class="preview-label">Duration</span><span class="preview-value">${movieDuration} min</span></div>
+        <div class="preview-row"><span class="preview-label">Pricing</span><span class="preview-value" style="color:${multiColor}">${multi.toFixed(1)}× — ${multiLabel}</span></div>
+    `;
+}
+
+// Sync range input with hidden field on load
+document.getElementById('multiplierRange').value =
+    document.querySelector('[name="PriceMultiplier"]').value || 1.0;
+onMultiplierChange(document.getElementById('multiplierRange').value);
+</script>
+}

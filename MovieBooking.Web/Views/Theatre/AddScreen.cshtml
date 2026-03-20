@@ -1,0 +1,160 @@
+@* Views/Theatre/AddScreen.cshtml — Admin: Add a screen with auto seat generation *@
+@model MovieBooking.Web.Models.ScreenViewModel
+@{
+    ViewData["Title"] = "Add Screen";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var theatre = ViewBag.Theatre as MovieBooking.Models.Theatre;
+}
+
+<div class="container">
+    <div class="form-page-header">
+        <a asp-action="Screens" asp-controller="Theatre"
+           asp-route-id="@theatre?.TheatreId" class="back-link">← Back to Screens</a>
+        <h1 class="page-title">🎭 Add Screen — @theatre?.Name</h1>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:1.5rem;align-items:flex-start">
+
+        @* ── FORM ── *@
+        <div class="form-card">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <form asp-action="AddScreen" asp-controller="Theatre"
+                  asp-route-id="@theatre?.TheatreId" method="post" id="screenForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="TheatreId" />
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label asp-for="ScreenName" class="form-label"></label>
+                        <input asp-for="ScreenName" class="form-control" placeholder="e.g. Screen 1" />
+                        <span asp-validation-for="ScreenName" class="text-danger small"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="ScreenType" class="form-label"></label>
+                        <select asp-for="ScreenType" class="form-control">
+                            <option>Standard</option>
+                            <option>IMAX</option>
+                            <option>4DX</option>
+                            <option>Dolby</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Rows" class="form-label"></label>
+                        <input asp-for="Rows" class="form-control" type="number" min="1" max="26"
+                               id="rows" oninput="updatePreview()" />
+                        <span asp-validation-for="Rows" class="text-danger small"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="SeatsPerRow" class="form-label"></label>
+                        <input asp-for="SeatsPerRow" class="form-control" type="number" min="1" max="50"
+                               id="seatsPerRow" oninput="updatePreview()" />
+                        <span asp-validation-for="SeatsPerRow" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem">
+                    <p style="font-size:.8rem;font-weight:600;color:var(--text-muted);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em">
+                        Seat Categories
+                    </p>
+                    <div class="form-grid-2">
+                        <div class="form-group" style="margin-bottom:.75rem">
+                            <label asp-for="VipRows" class="form-label" style="color:#e8344a">VIP Rows (from front)</label>
+                            <input asp-for="VipRows" class="form-control" type="number" min="0" max="10"
+                                   id="vipRows" oninput="updatePreview()" />
+                        </div>
+                        <div class="form-group" style="margin-bottom:.75rem">
+                            <label asp-for="VipPrice" class="form-label" style="color:#e8344a">VIP Price (₹)</label>
+                            <input asp-for="VipPrice" class="form-control" type="number" min="1" />
+                        </div>
+                        <div class="form-group" style="margin-bottom:.75rem">
+                            <label asp-for="PremiumRows" class="form-label" style="color:#6366f1">Premium Rows</label>
+                            <input asp-for="PremiumRows" class="form-control" type="number" min="0" max="10"
+                                   id="premiumRows" oninput="updatePreview()" />
+                        </div>
+                        <div class="form-group" style="margin-bottom:.75rem">
+                            <label asp-for="PremiumPrice" class="form-label" style="color:#6366f1">Premium Price (₹)</label>
+                            <input asp-for="PremiumPrice" class="form-control" type="number" min="1" />
+                        </div>
+                        <div class="form-group" style="margin-bottom:0">
+                            <label asp-for="StandardPrice" class="form-label" style="color:#10b981">Standard Price (₹)</label>
+                            <input asp-for="StandardPrice" class="form-control" type="number" min="1" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a asp-action="Screens" asp-controller="Theatre"
+                       asp-route-id="@theatre?.TheatreId" class="btn-secondary">Cancel</a>
+                    <button type="submit" class="btn-primary">Create Screen & Generate Seats</button>
+                </div>
+            </form>
+        </div>
+
+        @* ── LIVE SEAT PREVIEW ── *@
+        <div class="card" style="position:sticky;top:calc(var(--nav-height) + 1rem)">
+            <p style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem">
+                Live Preview
+            </p>
+
+            @* Screen representation *@
+            <div style="background:var(--dark);color:rgba(255,255,255,.5);text-align:center;padding:.4rem;border-radius:4px;font-size:.7rem;margin-bottom:1rem;letter-spacing:.1em">
+                SCREEN
+            </div>
+
+            <div id="seatPreview" style="overflow-x:auto"></div>
+
+            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;font-size:.75rem">
+                    <span style="display:flex;align-items:center;gap:.3rem">
+                        <span style="width:12px;height:12px;background:#e8344a;border-radius:2px;display:inline-block"></span> VIP
+                    </span>
+                    <span style="display:flex;align-items:center;gap:.3rem">
+                        <span style="width:12px;height:12px;background:#6366f1;border-radius:2px;display:inline-block"></span> Premium
+                    </span>
+                    <span style="display:flex;align-items:center;gap:.3rem">
+                        <span style="width:12px;height:12px;background:#10b981;border-radius:2px;display:inline-block"></span> Standard
+                    </span>
+                </div>
+                <p id="totalSeatsLabel" style="margin-top:.75rem;font-size:.875rem;color:var(--text-muted)">
+                    Total: <strong id="totalSeats" style="color:var(--text)">150</strong> seats
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+function updatePreview() {
+    const rows = parseInt(document.getElementById('rows').value) || 0;
+    const spRow = parseInt(document.getElementById('seatsPerRow').value) || 0;
+    const vipRows = parseInt(document.getElementById('vipRows').value) || 0;
+    const premiumRows = parseInt(document.getElementById('premiumRows').value) || 0;
+
+    document.getElementById('totalSeats').textContent = rows * spRow;
+
+    const preview = document.getElementById('seatPreview');
+    let html = '<div style="display:flex;flex-direction:column;gap:3px">';
+
+    for (let r = 0; r < Math.min(rows, 20); r++) {
+        const label = String.fromCharCode(65 + r);
+        let color = '#10b981'; // Standard = green
+        if (r < vipRows) color = '#e8344a';
+        else if (r < vipRows + premiumRows) color = '#6366f1';
+
+        html += `<div style="display:flex;align-items:center;gap:3px">`;
+        html += `<span style="width:14px;font-size:.65rem;color:var(--text-muted);font-weight:600;flex-shrink:0">${label}</span>`;
+        for (let s = 0; s < Math.min(spRow, 25); s++) {
+            html += `<span style="width:13px;height:13px;background:${color};border-radius:2px;opacity:.85;flex-shrink:0"></span>`;
+        }
+        if (spRow > 25) html += `<span style="font-size:.6rem;color:var(--text-muted)">+${spRow-25}</span>`;
+        html += `</div>`;
+    }
+    if (rows > 20) html += `<div style="font-size:.7rem;color:var(--text-muted);padding:.2rem 18px">... ${rows-20} more rows</div>`;
+    html += '</div>';
+    preview.innerHTML = html;
+}
+updatePreview(); // init
+</script>
+}

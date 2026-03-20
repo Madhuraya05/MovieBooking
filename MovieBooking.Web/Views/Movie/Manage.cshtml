@@ -1,0 +1,92 @@
+@* =============================================================================
+   Views/Movie/Manage.cshtml — Admin: Movie Management Table
+============================================================================= *@
+
+@model IEnumerable<MovieBooking.Models.Movie>
+@using MovieBooking.Infrastructure.Services
+@{
+    ViewData["Title"] = "Manage Movies";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var cloudinary = ViewBag.Cloudinary as CloudinaryService;
+}
+
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">🎬 Manage Movies</h1>
+        <a asp-action="Create" asp-controller="Movie" class="btn-primary">+ Add Movie</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    <div class="card" style="overflow:auto;">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Poster</th>
+                    <th>Title</th>
+                    <th>Genre</th>
+                    <th>Language</th>
+                    <th>Duration</th>
+                    <th>Release</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var movie in Model)
+                {
+                    <tr class="@(!movie.IsActive ? "row-inactive" : "")">
+                        <td>
+                            <img src="@(cloudinary?.GetResizedUrl(movie.PosterUrl, 60, 90) ?? "/images/no-poster.jpg")"
+                                 alt="@movie.Title" class="table-poster-thumb" />
+                        </td>
+                        <td>
+                            <strong>@movie.Title</strong>
+                            @if (!string.IsNullOrEmpty(movie.Rating))
+                            {
+                                <span class="badge-sm">@movie.Rating</span>
+                            }
+                        </td>
+                        <td>@movie.Genre</td>
+                        <td>@movie.Language</td>
+                        <td>@movie.DurationMinutes min</td>
+                        <td>@movie.ReleaseDate.ToString("dd MMM yyyy")</td>
+                        <td>
+                            @if (movie.IsActive)
+                            {
+                                <span class="status-badge status-active">Active</span>
+                            }
+                            else
+                            {
+                                <span class="status-badge status-inactive">Hidden</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <a asp-action="Detail" asp-controller="Movie"
+                                   asp-route-id="@movie.MovieId" class="btn-sm-view">View</a>
+                                <a asp-action="Edit" asp-controller="Movie"
+                                   asp-route-id="@movie.MovieId" class="btn-sm-edit">Edit</a>
+                                @if (movie.IsActive && User.IsInRole("SuperAdmin"))
+                                {
+                                    <form asp-action="Delete" asp-controller="Movie"
+                                          method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@movie.MovieId" />
+                                        <button type="submit" class="btn-sm-delete"
+                                                onclick="return confirm('Hide @movie.Title from listings?')">
+                                            Hide
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
