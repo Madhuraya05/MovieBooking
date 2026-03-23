@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MovieBooking.Infrastructure.Services;
 using MovieBooking.Models;
 using Stripe;
 
@@ -14,14 +15,16 @@ namespace MovieBooking.Web.Controllers
         private readonly AppDbContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration configuration;
+        private readonly MessageService _messageService;
         private readonly ILogger<PaymentController> logger;
         private readonly EmailService _emailService;
 
-        public PaymentController(AppDbContext context, UserManager<AppUser> userManager,IConfiguration configuration,ILogger<PaymentController> logger,EmailService emailService)
+        public PaymentController(AppDbContext context, UserManager<AppUser> userManager,IConfiguration configuration,MessageService messageService,ILogger<PaymentController> logger,EmailService emailService)
         {
             this._context = context;
             this._userManager = userManager;
             this.configuration = configuration;
+            this._messageService = messageService;
             this.logger = logger;
             _emailService = emailService;
         }
@@ -299,6 +302,15 @@ namespace MovieBooking.Web.Controllers
                     user.Email!,
                     user.FullName,
                     emailData);
+
+                await _messageService.SendBookingConfirmationAsync(
+                    user.PhoneNumber,
+                    booking.Show.Movie.Title,
+                    booking.BookingReference,
+                    booking.Show.ShowDate,
+                    booking.Show.StartTime
+                    );
+
             }
         }
 

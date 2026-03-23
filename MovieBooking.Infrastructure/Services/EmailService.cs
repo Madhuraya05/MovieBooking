@@ -106,7 +106,13 @@ namespace CinemaBooking.Services
                     toEmail);
             }
         }
-
+        /// <summary>
+        /// 
+        /// 
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+     
         // ─────────────────────────────────────────────────────────────────────
         // GENERATE QR CODE
         // Encodes the ticket code as a PNG QR image (byte array)
@@ -129,9 +135,12 @@ namespace CinemaBooking.Services
             );
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // BUILD HTML EMAIL
-        // ─────────────────────────────────────────────────────────────────────
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="qrImages"></param>
+        /// <returns></returns>
         private static string BuildEmailHtml(
             BookingEmailData data,
             List<(string Cid, byte[] Bytes, string TicketCode)> qrImages)

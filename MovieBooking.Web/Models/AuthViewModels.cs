@@ -4,6 +4,9 @@ namespace MovieBooking.Web.Models
 {
     public class RegisterViewModel
     {
+        /// <summary>
+        /// 
+        /// </summary>
         [Required(ErrorMessage = "Full name is required")]
         [MaxLength(100)]
         [Display(Name = "Full Name")]
