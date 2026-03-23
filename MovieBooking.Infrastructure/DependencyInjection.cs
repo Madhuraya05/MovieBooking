@@ -18,6 +18,7 @@ namespace MovieBooking.Infrastructure
             //services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<CloudinaryService> ();
             services.AddScoped<EmailService>();
+            services.AddScoped<MessageService>();
             services.AddHostedService<SeatExpiryService>();
             return services;
         }
