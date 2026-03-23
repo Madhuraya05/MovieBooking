@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CinemaBooking.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MovieBooking.Application.Interfaces;
 using MovieBooking.Infrastructure.Services;
@@ -16,6 +17,7 @@ namespace MovieBooking.Infrastructure
 
             //services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<CloudinaryService> ();
+            services.AddScoped<EmailService>();
             services.AddHostedService<SeatExpiryService>();
             return services;
         }

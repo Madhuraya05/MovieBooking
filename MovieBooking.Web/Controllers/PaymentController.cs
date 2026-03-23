@@ -1,4 +1,5 @@
 ﻿using CinemaBooking.Data;
+using CinemaBooking.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,13 +15,15 @@ namespace MovieBooking.Web.Controllers
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration configuration;
         private readonly ILogger<PaymentController> logger;
+        private readonly EmailService _emailService;
 
-        public PaymentController(AppDbContext context, UserManager<AppUser> userManager,IConfiguration configuration,ILogger<PaymentController> logger)
+        public PaymentController(AppDbContext context, UserManager<AppUser> userManager,IConfiguration configuration,ILogger<PaymentController> logger,EmailService emailService)
         {
             this._context = context;
             this._userManager = userManager;
             this.configuration = configuration;
             this.logger = logger;
+            _emailService = emailService;
         }
 
         [HttpPost]
@@ -180,7 +183,7 @@ namespace MovieBooking.Web.Controllers
         public async Task<IActionResult> WebHook()
         {
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-
+            
             Event stripeEvent;
             try
             {
@@ -216,6 +219,7 @@ namespace MovieBooking.Web.Controllers
             var payment = await _context.Payments
                 .Include(p => p.Booking)
                     .ThenInclude(b => b.BookingSeats)
+                    .ThenInclude(bs => bs.Seat)
                 .FirstOrDefaultAsync(p => p.StripePaymentIntentId == intent.Id);
 
             if (payment == null) return;
@@ -236,13 +240,13 @@ namespace MovieBooking.Web.Controllers
             // Confirm all BookingSeats
             foreach (var bs in booking.BookingSeats)
                 bs.Status = "Confirmed";
-
+            var code = "TKT-" + Guid.NewGuid().ToString("N")[..8].ToUpper();
             // Generate Tickets — one per seat
             var tickets = booking.BookingSeats.Select(bs => new Ticket
             {
                 BookingId = booking.BookingId,
                 BookingSeatId = bs.BookingSeatId,
-                TicketCode = "TKT-" + Guid.NewGuid().ToString("N")[..8].ToUpper(),
+                TicketCode = code,
                 QRCodeData = $"CB|TKT-{Guid.NewGuid().ToString("N")[..8].ToUpper()}|{booking.ShowId}|{bs.SeatId}",
                 IssuedAt = DateTime.UtcNow
             }).ToList();
@@ -251,6 +255,51 @@ namespace MovieBooking.Web.Controllers
             await _context.SaveChangesAsync();
 
             // TODO Phase 8: Send confirmation email with tickets here
+            var show = await _context.Shows
+        .Include(s => s.Movie)
+        .Include(s => s.Screen).ThenInclude(sc => sc.Theatre)
+        .FirstOrDefaultAsync(s => s.ShowId == booking.ShowId);
+
+            var user = await _userManager.FindByIdAsync(booking.UserId);
+
+            if (user != null && show != null)
+            {
+                var ticketItems = tickets.Select(t =>
+                {
+                    var bs = booking.BookingSeats
+                        .First(bs => bs.BookingSeatId == t.BookingSeatId);
+                    return new TicketEmailItem
+                    {
+                        TicketCode = t.TicketCode,
+                        SeatLabel = $"{bs.Seat.RowLabel}{bs.Seat.SeatNumber}",
+                        Category = bs.Seat.Category,
+                        Price = bs.SeatPrice
+                    };
+                }).ToList();
+
+                var emailData = new BookingEmailData
+                {
+                    BookingReference = booking.BookingReference,
+                    MovieTitle = show.Movie.Title,
+                    ShowDate = show.ShowDate,
+                    StartTime = show.StartTime,
+                    TheatreName = show.Screen.Theatre.Name,
+                    ScreenName = show.Screen.ScreenName,
+                    City = show.Screen.Theatre.City,
+                    Language = show.Language,
+                    SubTotal = booking.TotalAmount - booking.ConvenienceFee,
+                    ConvenienceFee = booking.ConvenienceFee,
+                    TotalAmount = booking.TotalAmount,
+                    Tickets = ticketItems
+                };
+
+                // Fire and forget — webhook must return 200 quickly
+                // Email failure will NOT affect booking confirmation
+                _ = _emailService.SendBookingConfirmationAsync(
+                    user.Email!,
+                    user.FullName,
+                    emailData);
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────

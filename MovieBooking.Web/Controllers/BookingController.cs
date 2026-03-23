@@ -1,4 +1,5 @@
 ﻿using CinemaBooking.Data;
+using CinemaBooking.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +17,17 @@ namespace MovieBooking.Web.Controllers
         private readonly UserManager<AppUser> _userManager;
         private readonly CloudinaryService _cloudinary;
         private readonly ILogger<BookingController> logger;
+        private readonly EmailService emailService;
         private const decimal ConvenienceFee = 30m;
         private const int HoldMinutes = 10;
 
-        public BookingController(AppDbContext context,UserManager<AppUser> userManager,CloudinaryService cloudinary,ILogger<BookingController> logger)
+        public BookingController(AppDbContext context,UserManager<AppUser> userManager,CloudinaryService cloudinary,ILogger<BookingController> logger,EmailService emailService)
         {
             _context = context;
             _userManager =userManager;
             _cloudinary = cloudinary;
             this.logger = logger;
+            this.emailService = emailService;
         }
 
         [Authorize]
@@ -368,27 +371,78 @@ namespace MovieBooking.Web.Controllers
 
         private async Task ConfirmBooking(Booking booking)
         {
-            booking.Status = "Confirmed";
+                booking.Status = "Confirmed";
 
-            var bookingSeats = await _context.BookingSeats
-                .Where(bs => bs.BookingId == booking.BookingId)
-                .ToListAsync();
+                var bookingSeats = await _context.BookingSeats
+                    .Include(bs => bs.Seat)
+                    .Where(bs => bs.BookingId == booking.BookingId)
+                    .ToListAsync();
 
-            foreach (var bs in bookingSeats)
-                bs.Status = "Confirmed";
+                foreach (var bs in bookingSeats)
+                    bs.Status = "Confirmed";
 
-            var tickets = bookingSeats.Select(bs => new Ticket
-            {
-                BookingId = booking.BookingId,
-                BookingSeatId = bs.BookingSeatId,
-                TicketCode = GenerateTicketCode(),
-                QRCodeData = $"CB|{GenerateTicketCode()}|{booking.ShowId}|{bs.SeatId}",
-                IssuedAt = DateTime.UtcNow
-            }).ToList();
+                // Generate tickets — one per seat
+                var tickets = bookingSeats.Select(bs => new Ticket
+                {
+                    BookingId = booking.BookingId,
+                    BookingSeatId = bs.BookingSeatId,
+                    TicketCode = GenerateTicketCode(),
+                    QRCodeData = $"CB|TKT-{Guid.NewGuid().ToString("N")[..8].ToUpper()}|{booking.ShowId}|{bs.SeatId}",
+                    IssuedAt = DateTime.UtcNow
+                }).ToList();
 
-            _context.Tickets.AddRange(tickets);
-            await _context.SaveChangesAsync();  
-        }
+                _context.Tickets.AddRange(tickets);
+                await _context.SaveChangesAsync();
+
+                // ── SEND CONFIRMATION EMAIL ───────────────────────────────────────────
+                // Load full show data for email (might not be included in booking yet)
+                var show = await _context.Shows
+                    .Include(s => s.Movie)
+                    .Include(s => s.Screen).ThenInclude(sc => sc.Theatre)
+                    .FirstOrDefaultAsync(s => s.ShowId == booking.ShowId);
+
+                // Load user email
+                var user = await _userManager.FindByIdAsync(booking.UserId);
+
+                if (user != null && show != null)
+                {
+                    // Map each ticket + bookingSeat to TicketEmailItem
+                    var ticketItems = tickets.Select(t =>
+                    {
+                        var bs = bookingSeats.First(bs => bs.BookingSeatId == t.BookingSeatId);
+                        return new TicketEmailItem
+                        {
+                            TicketCode = t.TicketCode,
+                            SeatLabel = $"{bs.Seat.RowLabel}{bs.Seat.SeatNumber}",
+                            Category = bs.Seat.Category,
+                            Price = bs.SeatPrice
+                        };
+                    }).ToList();
+
+                    var emailData = new BookingEmailData
+                    {
+                        BookingReference = booking.BookingReference,
+                        MovieTitle = show.Movie.Title,
+                        ShowDate = show.ShowDate,
+                        StartTime = show.StartTime,
+                        TheatreName = show.Screen.Theatre.Name,
+                        ScreenName = show.Screen.ScreenName,
+                        City = show.Screen.Theatre.City,
+                        Language = show.Language,
+                        SubTotal = booking.TotalAmount - booking.ConvenienceFee,
+                        ConvenienceFee = booking.ConvenienceFee,
+                        TotalAmount = booking.TotalAmount,
+                        Tickets = ticketItems
+                    };
+
+                    // Fire and forget — don't await, don't block the user's redirect
+                    // If email fails, it's logged but booking is still confirmed
+                    _ = emailService.SendBookingConfirmationAsync(
+                        user.Email!,
+                        user.FullName,
+                        emailData);
+                }
+            }
         private async Task ReleaseExpiredBooking(Booking booking)
         {
             booking.Status = "Cancelled";
