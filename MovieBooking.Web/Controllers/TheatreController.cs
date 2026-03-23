@@ -9,6 +9,9 @@ using Org.BouncyCastle.Security;
 
 namespace MovieBooking.Web.Controllers
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class TheatreController : Controller
     {
         private readonly AppDbContext _context;
@@ -21,6 +24,11 @@ namespace MovieBooking.Web.Controllers
         }
 
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="city"></param>
+        /// <returns></returns>
         public async Task<IActionResult> Index(string? city)
         {
             var query = _context.Theatres
