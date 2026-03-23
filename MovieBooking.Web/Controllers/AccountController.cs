@@ -21,11 +21,19 @@ namespace MovieBooking.Web.Controllers
             this.signInManager = signInManager;
             this.roleManager = roleManager;
         }
+        /// <summary>
+        /// default view
+        /// </summary>
+        /// <returns></returns>
         public IActionResult Index()
         {
             return View();
         }
 
+        /// <summary>
+        /// the get register which return register view
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
         public IActionResult Register()
         {
@@ -34,7 +42,11 @@ namespace MovieBooking.Web.Controllers
 
             return View();
         }
-
+        /// <summary>
+        /// this post method store the user in db
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)
@@ -70,6 +82,11 @@ namespace MovieBooking.Web.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// get view for login
+        /// </summary>
+        /// <param name="returnUrl"></param>
+        /// <returns></returns>
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
         {
@@ -81,6 +98,12 @@ namespace MovieBooking.Web.Controllers
             return View();
         }
 
+        /// <summary>
+        /// checking user deatil for login
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="returnUrl"></param>
+        /// <returns></returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model, string? returnUrl = null)
@@ -141,6 +164,10 @@ namespace MovieBooking.Web.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// logout user using signInManager
+        /// </summary>
+        /// <returns></returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]

@@ -24,11 +24,13 @@ namespace CinemaBooking.Services
             _logger = logger;
             this.configuration = configuration;
         }
-
-        // ─────────────────────────────────────────────────────────────────────
-        // MAIN METHOD: Send Booking Confirmation with QR Codes
-        // Called after payment is confirmed (in ConfirmBooking or webhook)
-        // ─────────────────────────────────────────────────────────────────────
+        /// <summary>
+        /// MAIN METHOD: Send Booking Confirmation with QR Codes Called after payment is confirmed (in ConfirmBooking or webhook)
+        /// </summary>
+        /// <param name="toEmail"></param>
+        /// <param name="toName"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
         public async Task SendBookingConfirmationAsync(
             string toEmail,
             string toName,
@@ -107,16 +109,10 @@ namespace CinemaBooking.Services
             }
         }
         /// <summary>
-        /// 
-        /// 
+        /// GENERATE QR CODE Encodes the ticket code as a PNG QR image (byte array)
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>
-     
-        // ─────────────────────────────────────────────────────────────────────
-        // GENERATE QR CODE
-        // Encodes the ticket code as a PNG QR image (byte array)
-        // ─────────────────────────────────────────────────────────────────────
         private static byte[] GenerateQrCode(string content)
         {
             // QRCoder generates the QR matrix
@@ -136,7 +132,7 @@ namespace CinemaBooking.Services
         }
 
         /// <summary>
-        /// 
+        /// html for email
         /// </summary>
         /// <param name="data"></param>
         /// <param name="qrImages"></param>
@@ -332,10 +328,11 @@ namespace CinemaBooking.Services
 </body>
 </html>";
         }
-
-        // ─────────────────────────────────────────────────────────────────────
-        // PLAIN TEXT FALLBACK
-        // ─────────────────────────────────────────────────────────────────────
+        /// <summary>
+        ///PLAIN TEXT FALLBACK 
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
         private static string BuildEmailText(BookingEmailData data)
         {
             var seats = string.Join("\n", data.Tickets.Select(t =>

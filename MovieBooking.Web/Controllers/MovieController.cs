@@ -18,6 +18,16 @@ namespace MovieBooking.Web.Controllers
             this._context = context;
             this._cloudinary = cloudinary;
         }
+        /// <summary>
+        /// Displays a list of active movies, optionally filtered by search text and genre.
+        /// </summary>
+        /// <remarks>The returned view includes the list of available genres and the current search and
+        /// genre filters for use in the UI.</remarks>
+        /// <param name="search">The search text used to filter movies by title or description. If null or empty, no search filtering is
+        /// applied.</param>
+        /// <param name="genre">The genre used to filter the list of movies. If null or empty, movies of all genres are included.</param>
+        /// <returns>An asynchronous operation that returns an <see cref="IActionResult"/> containing the filtered list of
+        /// movies.</returns>
         public async Task<IActionResult> Index(string? search, string? genre)
         {
             var query = _context.Movies
@@ -51,6 +61,11 @@ namespace MovieBooking.Web.Controllers
             return View(movies);
         }
 
+        /// <summary>
+        /// it gives the detail view of the particular movie
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>An IActionResult that renders the detail view of the movie</returns>
         public async Task<IActionResult> Detail(int id)
         {
             var movie = await _context.Movies
@@ -68,6 +83,10 @@ namespace MovieBooking.Web.Controllers
             return View(movie);
         }
 
+        /// <summary>
+        /// it returns the view with movieviewmodel
+        /// </summary>
+        /// <returns></returns>
         [Authorize(Roles = "SuperAdmin, TheatreAdmin")]
         public IActionResult Create()
         {
@@ -77,6 +96,11 @@ namespace MovieBooking.Web.Controllers
             });
         }
 
+        /// <summary>
+        /// it create the movie 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>An IActionResult that redirect to index </returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "SuperAdmin,TheatreAdmin")]
@@ -122,6 +146,11 @@ namespace MovieBooking.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// it takes the movieid and binds the model
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>An IActionResult that renders the edit view of the movie</returns>
         [Authorize(Roles = "SuperAdmin,TheatreAdmin")]
         public async Task<IActionResult> Edit(int id)
         {
@@ -145,6 +174,11 @@ namespace MovieBooking.Web.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// it edits the existing movie
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>An IActionResult that redirect to index</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "SuperAdmin,TheatreAdmin")]
@@ -192,6 +226,11 @@ namespace MovieBooking.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// it gives the detail view of the particular movie
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>An IActionResult that redirect to the index</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "SuperAdmin")]

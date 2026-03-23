@@ -30,6 +30,16 @@ namespace MovieBooking.Web.Controllers
             this.emailService = emailService;
         }
 
+        /// <summary>
+        /// Displays the seat selection view for a specified show, allowing users to choose available seats for booking.
+        /// </summary>
+        /// <remarks>Only scheduled shows that have not yet started can be selected. If the show is
+        /// unavailable or has already started, the user is redirected and notified. The seat map displays available and
+        /// booked seats for the selected show.</remarks>
+        /// <param name="showId">The unique identifier of the show for which seats are to be selected. Must correspond to a scheduled and
+        /// available show.</param>
+        /// <returns>An IActionResult that renders the seat selection view if the show is available; otherwise, redirects to the
+        /// show listing page with an error message.</returns>
         [Authorize]
         public async Task<IActionResult> SelectSeats(int showId)
         {
@@ -97,6 +107,11 @@ namespace MovieBooking.Web.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// IT hold the seat with tencapacity
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns>redirect to selectseat on error otherwise on summary</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> HoldSeats(HoldSeatsRequest request)
@@ -196,6 +211,12 @@ namespace MovieBooking.Web.Controllers
                 return RedirectToAction(nameof(SelectSeats), new {showId = request.ShowId});
             }
         }
+
+        /// <summary>
+        /// it gives the summary of the booking
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>An IActionResult that renders the booking summary view if the booking is found</returns>
         [Authorize]
         public async Task<IActionResult> Summary(int id)
         {
@@ -248,6 +269,11 @@ namespace MovieBooking.Web.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// it confirms the bookingid and check for the booking expiry time
+        /// </summary>
+        /// <param name="bookingId"></param>
+        /// <returns>An IActionResult that redirects to checkout payment </returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
@@ -269,6 +295,15 @@ namespace MovieBooking.Web.Controllers
             return RedirectToAction("Checkout","Payment",new {bookingId});
         }
 
+        /// <summary>
+        /// Displays the booking confirmation page for the specified booking identifier, if the booking belongs to the
+        /// current user.
+        /// </summary>
+        /// <remarks>This action requires the user to be authenticated. Only bookings associated with the
+        /// current user can be accessed.</remarks>
+        /// <param name="id">The unique identifier of the booking to display. Must correspond to a booking owned by the current user.</param>
+        /// <returns>An IActionResult that renders the booking confirmation view if the booking is found; otherwise, a NotFound
+        /// result.</returns>
         [Authorize]
         public async Task<IActionResult> Confirmation(int id)
         {
@@ -311,6 +346,13 @@ namespace MovieBooking.Web.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// Displays a list of bookings made by the currently authenticated user.
+        /// </summary>
+        /// <remarks>This action requires the user to be authenticated. Only bookings associated with the
+        /// current user's account are displayed.</remarks>
+        /// <returns>An <see cref="IActionResult"/> that renders the booking history view for the current user. The view model
+        /// contains a list of the user's past bookings, ordered by booking date.</returns>
         [Authorize]
         public async Task<IActionResult> MyBookings()
         {
@@ -343,6 +385,15 @@ namespace MovieBooking.Web.Controllers
             return View(history);
         }
 
+        /// <summary>
+        /// Cancels a booking with the specified booking ID for the currently authenticated user.
+        /// </summary>
+        /// <remarks>Confirmed bookings cannot be cancelled through this action. Users must contact
+        /// support for refunds on confirmed bookings. Only bookings belonging to the current user can be
+        /// cancelled.</remarks>
+        /// <param name="bookingId">The unique identifier of the booking to cancel. Must correspond to a booking owned by the current user.</param>
+        /// <returns>A redirect to the MyBookings view if the cancellation is successful or not permitted; otherwise, a NotFound
+        /// result if the booking does not exist.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
